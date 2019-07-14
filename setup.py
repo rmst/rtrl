@@ -20,7 +20,7 @@ setup(name='rtrl',
             'torch',
             'imageio',
             'imageio-ffmpeg',
-            'line_profiler',
+            # 'line_profiler',
       ],
       extras_require={
 
