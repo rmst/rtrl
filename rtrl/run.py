@@ -54,8 +54,6 @@ class Test:
 
       action, stats = agent.act(r, done, info, obs, train=False)
       obs, r, done, info = env.step(action)
-
-
       # logger.log(**{'test_' + k: v for k, v in test_env.stats().items()})
 
 
@@ -95,12 +93,13 @@ class Train:
       # logger.log(cur_epoch=epoch)
 
       if self.teststep and step % self.teststep == 0:
-        print("Start test at step", step)
         if test_proc is not None:
           test_proc.join()
+
+        print("Start test at step", step)
         test_agent = deepcopy(agent)
         # test_agent.share_memory()
-        test_proc = mp.Process(target=Test, kwargs=dict(agent=test_agent, Env=self.Env, seed=self.seed+1000))
+        test_proc = mp.Process(target=Test, kwargs=dict(agent=test_agent, Env=self.Env, seed=self.seed+1000), daemon=True)
         test_proc.start()
       # if self.model_path and epoch % self.savestep == 0:
       #   print('model saved')
