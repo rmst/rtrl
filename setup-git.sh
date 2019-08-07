@@ -9,7 +9,8 @@ set -e
 commit=$(git describe --long --tags --dirty --match '[0-9]*\.[0-9]*')
 version=$(cat version)
 if [ $commit != $version ]; then
-  echo "commit number $commit"
+  echo "old version: $version"
+  echo "commiting version: $commit"
   echo $commit > version
   git add version
   git commit --amend -C HEAD --no-verify
