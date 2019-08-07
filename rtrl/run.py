@@ -15,6 +15,7 @@ from rtrl.wrappers import TimeLimitResetWrapper, DictObservationWrapper, Normali
   Float64ToFloat32
 import torch.multiprocessing as mp
 
+torch.load
 
 class GymEnv(gym.Wrapper):
   id: str = "Pendulum-v0"
