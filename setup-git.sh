@@ -5,12 +5,10 @@ nbstripout --install
 # writes version file based on the commit count for every commit 
 cat <<'EOF' > .git/hooks/post-commit
 #!/usr/bin/env bash
-set -e
-commit=$(git describe --long --tags --dirty --match '[0-9]*\.[0-9]*')
+commit=$(git rev-list HEAD --count)
 version=$(cat version)
 if [ $commit != $version ]; then
-  echo "old version: $version"
-  echo "commiting version: $commit"
+  echo "commit number $commit"
   echo $commit > version
   git add version
   git commit --amend -C HEAD --no-verify
