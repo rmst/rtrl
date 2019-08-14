@@ -9,7 +9,7 @@ commit=$(git rev-list HEAD --count)
 version=$(cat version)
 if [ $commit != $version ]; then
   echo "commit number $commit"
-  echo $commit > version
+  printf $commit > version
   git add version
   git commit --amend -C HEAD --no-verify
 fi

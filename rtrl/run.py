@@ -1,21 +1,15 @@
-import datetime
-import os
-import sys
-from copy import deepcopy
-from functools import partial
-from random import randrange, random
+from copy import deepcopy, copy
+from time import time
 
 import gym
-import torch
 
-import rtrl
 import rtrl.sac
+from rtrl.serialization import Directory
 from rtrl.util import apply_kwargs
 from rtrl.wrappers import TimeLimitResetWrapper, DictObservationWrapper, NormalizeActionWrapper, DictActionWrapper, \
   Float64ToFloat32
 import torch.multiprocessing as mp
 
-torch.load
 
 class GymEnv(gym.Wrapper):
   id: str = "Pendulum-v0"
@@ -35,89 +29,77 @@ class GymEnv(gym.Wrapper):
 
 
 class Test:
-  Env = GymEnv
-  steps = 10000
-  seed: int = randrange(1 << 32)  # could also be provided via $RANDOM
-  agent_path: str = 'agent'
+  steps: int = 10000
 
-  def __init__(self, agent: rtrl.sac.Agent = None, **kwargs):
-    apply_kwargs(self, kwargs)
+  def __init__(self, agent: rtrl.sac.Agent, Env=None, seed=None):
+    self.agent = agent
+    self.Env = Env
+    self.seed = seed
 
+  def run(self):
     env = self.Env(seed=self.seed)
-
-    # with open(self.agent_path) as f:
-    #   agent: rtrl.sac.Agent = torch.load(f)
-
     r, done, info = 0., True, {}
     for timestep in range(self.steps):
       if done:
         obs = env.reset()
-
-      action, stats = agent.act(r, done, info, obs, train=False)
+      action, stats = self.agent.act(r, done, info, obs, train=False)
       obs, r, done, info = env.step(action)
       # logger.log(**{'test_' + k: v for k, v in test_env.stats().items()})
 
 
-class Train:
+class Training:
   Env = GymEnv
   Agent = rtrl.sac.Agent
+  Test = Test
   steps: int = 20000  # number of timesteps to run
-  # logger: str = ''  # TODO: make class based
-  # model_path: str = ''
-  logstep: int = 1
-  savestep: int = 100  # timesteps between model checkpoints
   teststep: int = 100  # timesteps between tests
-  seed: int = randrange(1 << 32)  # could also be provided via $RANDOM
+  seed: int = 0
+  epochs: int = 50
 
-  def __init__(self, **kwargs):
-    apply_kwargs(self, kwargs)
-
-    # serializable_args.update(agents.logger.git_info(os.path.dirname(__file__)))
-    # serializable_args.update(datetime=datetime.datetime.now().strftime('%Y-%m-%d-%H%M%S'))
-    # serializable_args.update({k: os.environ.get(k, '') for k in os.environ.get('AGENTS_LOG_ENV', '').strip().split()})
-    # logger: agents.logger.Logger = agents.logger.make(self.logger, serializable_args, code=__name__)
-
-    env = self.Env(seed=self.seed)
+  def __init__(self):
     # train_env = gyn.wrappers.StatsWrapper(train_env, stats_window=5 * self.epoch_length * self.logstep)
-
-    print(env)
-    test_proc: mp.Process = None
+    self.env = self.Env(seed=self.seed)
+    print(self.env)
     # test_env = self.Env(seed=self.seed + 1000)
     # test_env = gyn.wrappers.StatsWrapper(test_env, stats_window=5 * self.epoch_length * self.teststep)
 
-    agent = self.Agent(env.observation_space, env.action_space)
+    self.agent = self.Agent(self.env.observation_space, self.env.action_space)
     # args_help(kwargs)
+    self.stats = {}
+    self.epoch = 0
+
+  def __getfiles__(self):
+    state = copy(self)
+    del state.env  # not saving that for now
+    del state.agent, state.stats
+    return dict(state=vars(state), agent=self.agent, stats=Directory(self.stats))
+
+  def __setfiles__(self, files):
+    self.agent = files.pop("agent")
+    vars(self).update(files.pop("state"))
+    self.env = self.Env(seed=self.seed + self.epoch)
+
+  def run_epoch(self):
+    print(f"start epoch {self.epoch}")
+    pool = mp.Pool(1)
+    results = []
 
     r, done, info = 0., True, {}
     for step in range(self.steps):
-      # print("start epoch {} after {} steps".format(epoch, env.total_steps))
-      # logger.log(cur_epoch=epoch)
-
       if self.teststep and step % self.teststep == 0:
-        if test_proc is not None:
-          test_proc.join()
-
         print("Start test at step", step)
-        test_agent = deepcopy(agent)
-        # test_agent.share_memory()
-        test_proc = mp.Process(target=Test, kwargs=dict(agent=test_agent, Env=self.Env, seed=self.seed+1000), daemon=True)
-        test_proc.start()
-      # if self.model_path and epoch % self.savestep == 0:
-      #   print('model saved')
-      #   storage.save(argformat(self.model_path, {}), dumps_torch(agent))
+        test = Test(deepcopy(self.agent), self.Env, self.seed+self.epochs+self.epoch+step)
+        results += (dict(time=time(), step=self.epoch*self.steps+step), pool.apply_async(test.run)),
 
       if done:
-        obs = env.reset()
+        obs = self.env.reset()
 
-      action, stats = agent.act(r, done, info, obs, train=True)
-      obs, r, done, info = env.step(action)
+      action, stats = self.agent.act(r, done, info, obs, train=True)
+      obs, r, done, info = self.env.step(action)
 
-      # train_stats = agent.train(train_actor.experience())
-      # logger.append(**train_stats)
-      #
-      # if epoch % self.logstep == 0:
-      #   logger.log(**train_env.stats())
-      #   logger.flush()
+    self.stats = {k: v for k, v in self.stats.items()}
+    pool.close()
+    self.epoch += 1
 
-    env.close()
-    test_proc.join()
+  def __del__(self):
+    self.env.close()

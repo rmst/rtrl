@@ -31,6 +31,59 @@ def get_wrapper_by_class(env, cls):
     return get_wrapper_by_class(env.env, cls)
 
 
+from copy import deepcopy
+from functools import partial
+from uuid import uuid4
+
+class_dict = {}
+
+
+def subclass(cls, attributes, name=None):
+  name = name or cls.__name__ + "_" + str(uuid4())[:5]
+  global class_dict
+  if name not in class_dict:
+    attributes.update(__reduce__=reduce)
+    class_dict[name] = type(name, (cls,), attributes)
+    print("subclass", class_dict[name])
+  return class_dict[name]
+
+
+def subclass_and_instantiate(base_class, attributes, name):
+  cls = subclass(base_class, attributes, name)
+  return cls.__new__(cls)
+
+
+def reduce(self):
+  base, = self.__class__.__bases__  # self.__class__ has a single base class (we created it with subclass)
+  attributes = {k: v for k, v in vars(self.__class__).items() if not k.startswith("__")}
+  name = self.__class__.__name__
+  state = self.__getstate__() if hasattr(self, "__getstate__") else vars(self)
+  print("reduce", base, attributes, name, state)
+  return subclass_and_instantiate, (base, attributes, name), state
+
+
+class Subclassable:
+  def __new__(cls, *args, **kwargs):
+    if ... in args:
+      assert len(args) == 1, 'currently no positional arguments allowed'
+      obj = subclass(cls, kwargs)
+      print("__new__", obj)
+      return obj
+    else:
+      return super().__new__(cls, *args, **kwargs)
+
+
+class A(Subclassable):
+  __: ...
+
+
+a = A()
+B = A(..., b=3)
+b = B()
+b.c = 9
+b2 = deepcopy(b)
+b2.c, b2.b
+
 class NormalizeActionWrapper(gym.Wrapper):
   def __init__(self, env):
     super().__init__(env)
