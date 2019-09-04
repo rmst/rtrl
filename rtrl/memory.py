@@ -49,8 +49,6 @@ from collections import Mapping, Sequence
 
 import torch
 
-from agents.util import as_obj_array
-from agents.profiling import profile
 
 numpy_type_map = {
   'float64': torch.FloatTensor,  # hack
@@ -81,7 +79,10 @@ def collate(batch, device=None, non_blocking=False):
     #   return torch.from_numpy(np.stack(batch)).to(device, non_blocking=non_blocking)
     # else:
     #   return torch.stack([torch.from_numpy(b).to(device, non_blocking=non_blocking) for b in batch], 0)
-    return collate(tuple(torch.from_numpy(b) for b in batch), device, non_blocking)
+    try:
+      return collate(tuple(torch.from_numpy(b) for b in batch), device, non_blocking)
+    except TypeError:
+      raise
   elif hasattr(elem, '__torch_tensor__'):
     return torch.stack([b.__torch_tensor__().to(device, non_blocking=non_blocking) for b in batch], 0)
   elif type(elem).__module__ == 'numpy' and elem.shape == ():

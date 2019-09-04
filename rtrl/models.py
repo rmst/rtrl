@@ -1,6 +1,7 @@
 from functools import partial
 
 import torch
+from rtrl.memory import collate, partition
 from torch import nn
 from torch.distributions import Normal, Distribution
 from torch.nn import functional as fu, Linear, Sequential, ReLU, ModuleList, Module
@@ -125,6 +126,14 @@ class Mlp(Module):
     self.critics = ModuleList(MlpActionValue(dim_obs, dim_action, self.hidden_units) for _ in range(self.num_critics))
     self.value = MlpValue(dim_obs, dim_action, self.hidden_units)
     self.actor = MlpPolicy(dim_obs, dim_action, self.hidden_units)
+
+  def act(self, obs, r, done, info):
+    obs_col = collate((obs,))
+    with torch.no_grad():
+      action_distribution = self.actor(obs_col)
+      action_col = action_distribution.sample()
+    action, = partition(action_col)
+    return action, {}
 
 
 # class MlpRT(nn.Module):

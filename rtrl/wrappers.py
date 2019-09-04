@@ -1,7 +1,47 @@
-from collections import Sequence, Mapping
+from collections import Sequence, Mapping, deque
 
 import gym
 import numpy as np
+import pandas as pd
+from pandas import DataFrame
+from rtrl.util import pandas_dict
+
+
+class StatsWrapper(gym.Wrapper):
+  def __init__(self, env, horizon=100):
+    super().__init__(env)
+    self.reward_hist = deque([0], maxlen=horizon + 1)
+    self.done_hist = deque([1], maxlen=horizon + 1)
+    self.total_steps = 0
+
+  def reset(self, **kwargs):
+    return super().reset(**kwargs)
+
+  def step(self, action):
+    m, r, d, info = super().step(action)
+    self.reward_hist.append(r)
+    self.done_hist.append(d)
+    self.total_steps += 1
+    return m, r, d, info
+
+  def stats(self):
+    returns = [0]
+    steps = [0]
+    for reward, done in zip(self.reward_hist, self.done_hist):
+      returns[-1] += reward
+      steps[-1] += 1
+      if done:
+        returns.append(0)
+        steps.append(0)
+    returns = returns[1:-1]  # first and last episodes are incomplete
+    steps = steps[1:-1]
+
+    return dict(
+      episodes=len(returns),
+      episode_length=np.mean(steps) if len(steps) else np.nan,
+      returns=np.mean(returns) if len(returns) else np.nan,
+      average_reward=np.mean(tuple(self.reward_hist)[1:]),
+    )
 
 
 class DictObservationWrapper(gym.ObservationWrapper):
@@ -30,59 +70,6 @@ def get_wrapper_by_class(env, cls):
   elif isinstance(env, gym.Wrapper):
     return get_wrapper_by_class(env.env, cls)
 
-
-from copy import deepcopy
-from functools import partial
-from uuid import uuid4
-
-class_dict = {}
-
-
-def subclass(cls, attributes, name=None):
-  name = name or cls.__name__ + "_" + str(uuid4())[:5]
-  global class_dict
-  if name not in class_dict:
-    attributes.update(__reduce__=reduce)
-    class_dict[name] = type(name, (cls,), attributes)
-    print("subclass", class_dict[name])
-  return class_dict[name]
-
-
-def subclass_and_instantiate(base_class, attributes, name):
-  cls = subclass(base_class, attributes, name)
-  return cls.__new__(cls)
-
-
-def reduce(self):
-  base, = self.__class__.__bases__  # self.__class__ has a single base class (we created it with subclass)
-  attributes = {k: v for k, v in vars(self.__class__).items() if not k.startswith("__")}
-  name = self.__class__.__name__
-  state = self.__getstate__() if hasattr(self, "__getstate__") else vars(self)
-  print("reduce", base, attributes, name, state)
-  return subclass_and_instantiate, (base, attributes, name), state
-
-
-class Subclassable:
-  def __new__(cls, *args, **kwargs):
-    if ... in args:
-      assert len(args) == 1, 'currently no positional arguments allowed'
-      obj = subclass(cls, kwargs)
-      print("__new__", obj)
-      return obj
-    else:
-      return super().__new__(cls, *args, **kwargs)
-
-
-class A(Subclassable):
-  __: ...
-
-
-a = A()
-B = A(..., b=3)
-b = B()
-b.c = 9
-b2 = deepcopy(b)
-b2.c, b2.b
 
 class NormalizeActionWrapper(gym.Wrapper):
   def __init__(self, env):
@@ -150,17 +137,18 @@ def deepmap(f, m):
     raise AttributeError()
 
 
+def float64_to_float32(x):
+    return np.asarray(x, np.float32) if x.dtype == np.float64 else x
+
+
 class Float64ToFloat32(gym.ObservationWrapper):
   """converts states and rewards to float32"""
 
   # TODO: change observation/action spaces to correct dtype
   def observation(self, observation):
-    observation = deepmap({np.ndarray: self.convert}, observation)
+    observation = deepmap({np.ndarray: float64_to_float32}, observation)
     return observation
-
-  def convert(self, x):
-      return np.asarray(x, np.float32) if x.dtype == np.float64 else x
 
   def step(self, action):
     s, r, d, info = super().step(action)
-    return s, np.asarray(r, np.float32), d, info
+    return s, r, d, info

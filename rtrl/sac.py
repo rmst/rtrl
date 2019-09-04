@@ -1,4 +1,6 @@
-from copy import deepcopy
+from collections import deque
+from copy import deepcopy, copy
+from functools import lru_cache
 from itertools import chain
 
 import rtrl.models
@@ -8,11 +10,12 @@ from torch.nn.functional import mse_loss
 
 from rtrl.memory import SimpleMemory, collate, partition
 from rtrl.nn import PopArt, no_grad, copy_shared
-from rtrl.util import apply_kwargs
+from rtrl.util import apply_kwargs, shallow_copy, cached_property
+import numpy as np
 
 
 class Agent:
-  M = rtrl.models.Mlp
+  Model = rtrl.models.Mlp
   OutputNorm = PopArt
 
   batchsize: int = 256  # training batch size
@@ -26,42 +29,36 @@ class Agent:
   target_freq: int = 1
   keep_reset_transitions: int = 0
   reward_scale: float = 5.
-  entropy_scale: float = 1.  # called alpha in RLKit
-  start_training: int = 1000
+  entropy_scale: float = 1.
+  start_training: int = 200
 
   def __init__(self, obsp, acsp, **kwargs):
     apply_kwargs(self, kwargs)
 
-    model = self.M(obsp, acsp)
-    self.model = model.to(self.device)
-    self.model_target: Agent.M = no_grad(deepcopy(self.model))
-    self.model_nograd: Agent.M = no_grad(copy_shared(self.model))
+    model = self.Model(obsp, acsp)
+    self.model: Agent.Model = model.to(self.device)
+    self.model_target: Agent.Model = no_grad(deepcopy(self.model))
 
     self.policy_optimizer = optim.Adam(self.model.actor.parameters(), lr=self.lr_actor)
     self.critic_optimizer = optim.Adam(chain(self.model.value.parameters(), *(c.parameters() for c in self.model.critics)), lr=self.lr)
     self.memory = SimpleMemory(self.memory_size, self.batchsize, self.device)
 
     self.num_updates = 0
-    self.is_training = False
 
     self.outnorm = self.OutputNorm(1, device=self.device)
     self.outnorm_target = self.OutputNorm(1, device=self.device)
 
-  def act(self, r, done, info, obs, train=False):
+  @cached_property
+  def model_nograd(self):
+    return no_grad(copy_shared(self.model))
+
+  def act(self, obs, r, done, info, train=False):
     stats = {}
-    obs_col = collate((obs,))
-    action_distribution = self.model_nograd.actor(obs_col)
-    action_col = action_distribution.sample()
-    action, = partition(action_col)
+    action, _ = self.model.act(obs, r, done, info)
 
     if train:
-      self.memory.append(r, float(done), info, obs, action)
-
-      if not self.is_training and len(self.memory) > self.start_training:
-        print(f"Starting training with memory size {len(self.memory)}")
-        self.is_training = True
-
-      if self.is_training:
+      self.memory.append(np.float32(r), np.float32(done), info, obs, action)
+      if len(self.memory) >= self.start_training:
         stats.update(self.train())
 
     return action, stats
@@ -113,7 +110,7 @@ class Agent:
     stats.update(loss_value=vf_loss.detach())
 
     policy_loss = self.entropy_scale * log_pi.mean() - self.outnorm.unnormalize(q_new_actions.mean())
-    policy_loss = self.outnorm.normalize(policy_loss)
+    policy_loss, = self.outnorm.normalize(policy_loss)
 
     self.policy_optimizer.zero_grad()
     policy_loss.backward()
@@ -129,22 +126,19 @@ class Agent:
       self.outnorm_target.std = self.polyak * self.outnorm_target.std + (1 - self.polyak) * self.outnorm.std
 
     self.num_updates += 1
-
-    stats.update(memory_size=len(self.memory), updates=self.num_updates)
-    return stats
+    return dict(stats, memory_size=len(self.memory), updates=self.num_updates)
 
   def __getstate__(self):
-    return {k: v for k, v in vars(self).items() if k not in (
-      "memory",
-      "compute_reward",
-      "logger",
-      "opt_actor",
-      "opt_critic",
-      "model_target",
-      "model_nograd",
-    )}
+    x: Agent = shallow_copy(self)
+    del x.memory
+    del x.model
+    return dict(state=vars(x), memory=self.memory, model=self.model, model_target=self.model_target, version="1")
 
   def __setstate__(self, state):
-    self.__dict__.update(state)
-    assert not hasattr(self, "model_nograd")
-    self.model_nograd: Agent.M = no_grad(copy_shared(self.model))
+    version = state.pop("version")
+    assert version == "1", "Incompatible format version"
+    self.model = state.pop("model")
+    self.memory = state.pop("memory")
+    vars(self).update(state.pop("state"))
+
+  __split_state__ = True

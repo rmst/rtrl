@@ -1,3 +1,3 @@
-from rtrl.run import Train
+from rtrl.training import Train
 
 Train()
