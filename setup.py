@@ -23,6 +23,7 @@ setup(name='rtrl',
             'imageio',
             'imageio-ffmpeg',
             'pandas',
+            'gym',
             # 'line_profiler',
       ],
       extras_require={
