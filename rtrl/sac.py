@@ -1,5 +1,6 @@
 from collections import deque
 from copy import deepcopy, copy
+from dataclasses import dataclass, InitVar
 from functools import lru_cache
 from itertools import chain
 
@@ -10,11 +11,16 @@ from torch.nn.functional import mse_loss
 
 from rtrl.memory import SimpleMemory, collate, partition
 from rtrl.nn import PopArt, no_grad, copy_shared
-from rtrl.util import apply_kwargs, shallow_copy, cached_property
+from rtrl.serialization import LazyLoad
+from rtrl.util import shallow_copy, lazy_property
 import numpy as np
 
 
-class Agent:
+@dataclass
+class Agent(LazyLoad):
+  obsp: InitVar
+  acsp: InitVar
+
   Model = rtrl.models.Mlp
   OutputNorm = PopArt
 
@@ -24,7 +30,6 @@ class Agent:
   lr: float = 0.0003
   discount: float = 0.99
   polyak: float = 0.995  # = 1 - 0.005
-  device: str = "cuda:0" if torch.cuda.is_available() else "cpu"
   policy_freq: int = 1
   target_freq: int = 1
   keep_reset_transitions: int = 0
@@ -32,9 +37,11 @@ class Agent:
   entropy_scale: float = 1.
   start_training: int = 200
 
-  def __init__(self, obsp, acsp, **kwargs):
-    apply_kwargs(self, kwargs)
+  device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
+  model_nograd = lazy_property(lambda self: no_grad(copy_shared(self.model)))
+
+  def __post_init__(self, obsp, acsp):
     model = self.Model(obsp, acsp)
     self.model: Agent.Model = model.to(self.device)
     self.model_target: Agent.Model = no_grad(deepcopy(self.model))
@@ -47,10 +54,6 @@ class Agent:
 
     self.outnorm = self.OutputNorm(1, device=self.device)
     self.outnorm_target = self.OutputNorm(1, device=self.device)
-
-  @cached_property
-  def model_nograd(self):
-    return no_grad(copy_shared(self.model))
 
   def act(self, obs, r, done, info, train=False):
     stats = {}

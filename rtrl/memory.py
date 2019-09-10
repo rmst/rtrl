@@ -1,13 +1,10 @@
 from random import randint
-from rtrl.util import apply_kwargs
 
 
-# TODO: rename to Memory and simplify
 class SimpleMemory:
   keep_reset_transitions: int = 0
 
-  def __init__(self, memory_size, batchsize, device, **kwargs):
-    apply_kwargs(self, kwargs)
+  def __init__(self, memory_size, batchsize, device):
     self.device = device
     self.batchsize = batchsize
     self.capacity = memory_size

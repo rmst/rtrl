@@ -1,3 +1,5 @@
-from rtrl.training import Train
+import sys
 
-Train()
+from rtrl.run import exec_cmd
+
+exec_cmd(*sys.argv)

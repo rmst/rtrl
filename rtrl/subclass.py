@@ -1,72 +1,67 @@
 from copy import deepcopy
 from functools import partial, partialmethod
+from importlib import import_module
+from typing import Union
 from uuid import uuid4
 
 
-def hp__setattr__(__setattr__, self, k, v):
-  if k in hyperparameters(self.__class__):
-    raise AttributeError(f"Attribute '{k}' is read only")
-  return __setattr__(self, k, v)
+def configuration(cls: type):
+  """this defines what subset of a class' attributes we consider to be the configuration"""
+  return {k: getattr(cls, k) for k, t in getattr(cls, "__annotations__", {}).items() if hasattr(cls, k)}  # all annotated attributes as dict
 
 
-def hp__reduce__(self):
-  base, = self.__class__.__bases__  # self.__class__ has a single base class (we created it with subclass)
-  state = self.__getstate__() if hasattr(self, "__getstate__") else vars(self)
-  return reconstruct, (base, hyperparameters(self.__class__)), state
+def conf_to_dict(cls: type):
+  config_cls, base = cls.__bases__
+  assert config_cls is Conf
+  attrs = {k: conf_to_dict(v) if isinstance(v, type) else v for k, v in configuration(cls).items()}
+  return dict(attrs, __class__=base.__module__ + "." + base.__qualname__)
 
 
-def hyperparameters(cls: type):
-  return {k: v for k, v in vars(cls).items() if k in getattr(cls, "__annotations__", {})}
+def conf_from_dict(d: dict):
+  *module, name = d["__class__"].split(".")
+  base = getattr(import_module(".".join(module)), name)
+  return conf(base, **{k: conf_from_dict(v) if isinstance(v, dict) else v for k, v in d.items() if k != "__class__"})
 
 
-def hyperparameterize(cls: type):
-  cls.__setattr__ = lambda self, k, v, f=cls.__setattr__: hp__setattr__(f, self, k, v)
-  cls.__reduce__ = hp__reduce__
-  return sub(type("dummy", (cls,), hyperparameters(cls)))
+class Conf:
+  def __setattr__(self, k, v):
+    if k in configuration(self.__class__):
+      raise AttributeError(f"Attribute '{k}' is read only")
+    return super().__setattr__(k, v)
+
+  def __reduce__(self):
+    state = self.__getstate__() if hasattr(self, "__getstate__") else vars(self)
+    config_cls, base = self.__class__.__bases__
+    assert config_cls is Conf
+    return _reconstruct, (conf_to_dict(self.__class__),), state
 
 
-def reconstruct(base, params):
-  cls = sub(type("dummy", (base,), params))
-  return cls.__new__(cls)
-
-
-def sub(cls, **kwargs):
-  base, = cls.__bases__
-  kwargs = dict(hyperparameters(cls), **kwargs)
-  key = (base, frozenset(kwargs.items()))
-  if key not in class_dict:
-    class_dict[key] = type(base.__name__ + f"_{hash(key)}", (base,), kwargs)
-  return class_dict[key]
-
-
-class_dict = {}
-
-
-def subclass(cls, **kwargs):
-  name =
-  diff = kwargs.keys() - vars(cls).keys()
+def conf(__class__: type = None, **kwargs):
+  if __class__ is None:
+    return partial(conf, **kwargs)
+  attrs = configuration(__class__)
+  if issubclass(__class__, Conf):
+    config_cls, __class__ = __class__.__bases__
+    assert config_cls is Conf
+  diff = kwargs.keys() - attrs.keys()
   assert not diff, f"Only existing attributes can be overridden, not {diff}"
-  kwargs.update(__reduce__=reduce, __is_partial_subclass__=True)
-  return type(name, (cls,), kwargs)
+  kwargs = {k: v(attrs[k]) if isinstance(v, partial) and v.func==conf else v for k, v in attrs.items()}  # insert missing default classes into partial confs
+  attrs = dict(attrs, **kwargs)
+  attrs = {k: conf(v) if isinstance(v, type) else v for k, v in attrs.items()}  # replace non-conf types
+  new_cls = type(f"conf({__class__.__name__}, ...)", (Conf, __class__), attrs)
+  return new_cls
 
 
-def subclass_and_instantiate(cls, attributes):
-  sub = subclass(cls, **attributes)
-  return sub.__new__(sub)
-
-
-def reduce(self):
-  base, = self.__class__.__bases__  # self.__class__ has a single base class (we created it with subclass)
-  attributes = {k: v for k, v in vars(self.__class__).items() if not k.startswith("__")}
-  state = self.__getstate__() if hasattr(self, "__getstate__") else vars(self)
-  return subclass_and_instantiate, (base, attributes), state
+def _reconstruct(d):
+  cls = conf_from_dict(d)
+  return cls.__new__(cls)
 
 
 if __name__ == "__main__":
   class A:
-    b = None
+    b: int = None
 
-  B = subclass(A, b=3)
+  B = conf(A, b=3)
   b = B()
   b.c = 9
   c = deepcopy(b)

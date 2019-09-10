@@ -1,8 +1,7 @@
 from copy import deepcopy
+from dataclasses import InitVar, dataclass
 
 import torch
-
-from rtrl.util import apply_kwargs
 
 
 def no_grad(model):
@@ -11,13 +10,15 @@ def no_grad(model):
   return model
 
 
+@dataclass
 class PopArt:
   """PopArt https://arxiv.org/pdf/1809.04474.pdf"""
+  dim: InitVar
+  device: InitVar
   beta: float = 0.0003
   update_weights: int = 1  # i.e. should we try to preserve outputs. If no that's just a running mean, std
 
-  def __init__(self, dim, device='cpu', **kwargs):
-    apply_kwargs(self, kwargs)
+  def __post_init__(self, dim, device):
     self.device = device
     self.m1 = torch.zeros((dim,)).to(device)
     self.m2 = torch.ones((dim,)).to(device)

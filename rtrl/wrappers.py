@@ -2,16 +2,13 @@ from collections import Sequence, Mapping, deque
 
 import gym
 import numpy as np
-import pandas as pd
-from pandas import DataFrame
-from rtrl.util import pandas_dict
 
 
 class StatsWrapper(gym.Wrapper):
-  def __init__(self, env, horizon=100):
+  def __init__(self, env, window=100):
     super().__init__(env)
-    self.reward_hist = deque([0], maxlen=horizon + 1)
-    self.done_hist = deque([1], maxlen=horizon + 1)
+    self.reward_hist = deque([0], maxlen=window + 1)
+    self.done_hist = deque([1], maxlen=window + 1)
     self.total_steps = 0
 
   def reset(self, **kwargs):
@@ -152,3 +149,5 @@ class Float64ToFloat32(gym.ObservationWrapper):
   def step(self, action):
     s, r, d, info = super().step(action)
     return s, r, d, info
+
+

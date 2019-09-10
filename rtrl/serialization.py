@@ -4,47 +4,63 @@ import pickle
 import sys
 import shutil
 import io
+from importlib import import_module
+from itertools import chain
+from os.path import join, exists
+from time import time
+
 import torch
 
-__version__ = "1"
+from rtrl.util import lazy_property
 
 
-def default_reduce(obj):
-  """We manually reduce the object's class via its name."""
-  assert obj.__class__.__name__ == obj.__class__.__qualname__, f"{obj.__class__} needs to be top-level"
-  module = obj.__class__.__module__
-  cls_name = obj.__class__.__name__
-  state = obj.__getstate__() if hasattr(obj, "__getstate__") else vars(obj)
-  return default_instantiate, (module, cls_name), state
+class LazyLoad:
+  # we use lazy_property here because we don't want to save those properties to file
+  _lazyload_path = lazy_property(lambda s: None)
+  _lazyload_timestamp = lazy_property(lambda s: None)
+  _lazyload_files = lazy_property(lambda s: set())
 
+  def __getattribute__(self, item):
+    # looking for item in __dict__
+    d = object.__getattribute__(self, "__dict__")
+    if item in d:
+      return d[item]
 
-def default_instantiate(module: str, cls_name: str):
-  """In the future we could remap class names here, in case they have changed"""
-  cls = getattr(sys.modules[module], cls_name)
-  return cls.__new__(cls)
+    # looking to load item from files
+    f = object.__getattribute__(self, "_lazyload_files")
+    if item in f:
+      path = join(self._lazyload_path, item)
+      assert os.path.getmtime(path) <= self._lazyload_timestamp, f"{path} changed after object creation"  # we currently don't check nested LazyLoad objects
+      v = self.__dict__[item] = load(path)
+      setattr(self, item, v)
+      return v
+
+    # looking for item in class
+    return super().__getattribute__(item)
+
+  def __dir__(self):
+    return chain(super().__dir__(), self._lazyload_files)
 
 
 def dump(obj, path):
-  """Like `pickle.dump`, except if `obj.__split_state__ == True`. Then the object's components (as returned by `__getstate__`) are being saved into different files.
-
-  If `obj.__split_state__ == True`, sub-objects aren't deduplicated as usual (although this could be implemented via symlinks in the future).
+  """Like `pickle.dump`. If `obj` is an instance of `LazyLoad` its components are saved as individual files such that they can be loaded lazily later.
   """
 
-  if not getattr(obj, "__split_state__", False):
+  if not isinstance(obj, LazyLoad):
     # Note: Using `torch.save(obj, path)` seems no longer necessary, see https://blog.dask.org/2018/07/23/protocols-pickle.
     with open(path, 'wb') as f:
       return pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
   if os.path.isfile(path):
     os.remove(path)
-  elif os.path.isdir(path) and os.path.exists(os.path.join(path, "__meta__")):
+  elif os.path.isdir(path) and exists(join(path, "__meta__.json")):
     shutil.rmtree(path)
   os.mkdir(path)
 
-  creator_fn, creator_args, state = obj.__reduce__() if hasattr(obj, "__reduce__") else default_reduce(obj)
-  assert "__meta__" not in state, '"__meta__" is a reserved name and can not be used as a state key'
-  files = dict(state, __meta__=(__version__, (creator_fn, creator_args)))
-  [dump(v, os.path.join(path, k)) for k, v in files.items()]
+  simple = {k: v for k, v in vars(obj).items() if isinstance(v, (float, int, str, bool))}
+  other = {k: v for k, v in vars(obj).items() if k not in simple}
+  save_json(dict(module=obj.__class__.__module__, cls=obj.__class__.__qualname__, version="1", __dict__=simple), join(path, "__meta__.json"))
+  [dump(v, os.path.join(path, k)) for k, v in other.items()]
 
 
 def load(path):
@@ -54,12 +70,16 @@ def load(path):
     with open(path, 'rb') as f:
       return pickle.load(f)
 
-  version, meta = load(os.path.join(path, "__meta__"))
-  assert version == "1", f"Can't load {path}. Incompatible format version {version}."
-  creator_fn, creator_args = meta
-  obj = creator_fn(*creator_args)
-  state = {k: load(os.path.join(path, k)) for k in os.listdir(path) if k != "__meta__"}
-  obj.__setstate__(state) if hasattr(obj, "__setstate__") else vars(obj).update(state)
+  meta = load_json(os.path.join(path, "__meta__.json"))
+  assert meta['version'] == "1", f"Can't load {path}. Incompatible format version {meta['version']}."
+  files = set(os.listdir(path))
+  files.remove("__meta__.json")
+  cls = getattr(import_module(meta["module"]), meta["cls"])
+  obj: LazyLoad = cls.__new__(cls)
+  obj.__dict__.update(meta["__dict__"])
+  obj._lazyload_path = path
+  obj._lazyload_files = files
+  obj._lazyload_timestamp = time()
   return obj
 
 
@@ -86,33 +106,22 @@ def load_json(path):
     return json.load(f)
 
 
-class Directory(dict):
-  __split_state__ = True
 
-  def __getstate__(self):
-    return dict(self, __version__="1")
-
-  def __setstate__(self, state):
-    version = state.pop("__version__")
-    assert version == "1", "Incompatible format version."
-    self.update(state)
-
-
-def test_save_split_dict():
-  from tempfile import mkdtemp
-
-  path = mkdtemp() + '/test'
-  try:
-    d = Directory(dict(a=3, b="fjdks"))
-    dump(d, path)
-
-    e = load(path)
-    assert d == e
-    print("success!")
-
-  finally:
-    shutil.rmtree(path)
-
-
-if __name__ == "__main__":
-  test_save_split_dict()
+# def test_save_split_dict():
+#   from tempfile import mkdtemp
+#
+#   path = mkdtemp() + '/test'
+#   try:
+#     d = Directory(dict(a=3, b="fjdks"))
+#     dump(d, path)
+#
+#     e = load(path)
+#     assert d == e
+#     print("success!")
+#
+#   finally:
+#     shutil.rmtree(path)
+#
+#
+# if __name__ == "__main__":
+#   test_save_split_dict()

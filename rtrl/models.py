@@ -1,3 +1,4 @@
+from dataclasses import InitVar, dataclass
 from functools import partial
 
 import torch
@@ -5,9 +6,6 @@ from rtrl.memory import collate, partition
 from torch import nn
 from torch.distributions import Normal, Distribution
 from torch.nn import functional as fu, Linear, Sequential, ReLU, ModuleList, Module
-
-# noinspection PyAbstractClass
-from rtrl.util import apply_kwargs
 
 
 # noinspection PyAbstractClass
@@ -53,9 +51,8 @@ class Independent(torch.distributions.Independent):
 
 
 class TanhNormalLayer(nn.Module):
-  def __init__(self, n, m, **kwargs):
+  def __init__(self, n, m):
     super().__init__()
-    apply_kwargs(self, kwargs)
 
     self.lin_mean = torch.nn.Linear(n, m)
     # self.lin_mean.weight.data
@@ -113,16 +110,18 @@ class MlpPolicy(Sequential):
     return super().forward(obs['vector'])
 
 
-# noinspection PyAbstractClass
+@dataclass(unsafe_hash=True)
 class Mlp(Module):
+  observation_space: InitVar
+  action_space: InitVar
+
   hidden_units: int = 256
   num_critics: int = 2
 
-  def __init__(self, ob_space, a_space, **kwargs):
-    apply_kwargs(self, kwargs)
+  def __post_init__(self, observation_space, action_space):
     super().__init__()
-    dim_obs = ob_space.spaces['vector'].shape[0]
-    dim_action = a_space.spaces['value'].shape[0]
+    dim_obs = observation_space.spaces['vector'].shape[0]
+    dim_action = action_space.spaces['value'].shape[0]
     self.critics = ModuleList(MlpActionValue(dim_obs, dim_action, self.hidden_units) for _ in range(self.num_critics))
     self.value = MlpValue(dim_obs, dim_action, self.hidden_units)
     self.actor = MlpPolicy(dim_obs, dim_action, self.hidden_units)
