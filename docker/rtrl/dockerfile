@@ -1,0 +1,19 @@
+# BASE_IMAGE has to have Python 3.7+ 
+ARG BASE_IMAGE=gym:latest
+FROM ${BASE_IMAGE}
+
+WORKDIR /app
+
+COPY ssh /app/ssh
+
+ENV GIT_SSH_COMMAND 'ssh -i /app/ssh/id_rsa_rtrl -o "StrictHostKeyChecking no"'
+
+ARG RTRL_REV
+RUN git clone git@github.com:rmst/rtrl.git /app/rtrl \
+  && cd /app/rtrl \
+  && git reset --hard $RTRL_REV \
+  && pip --no-cache-dir install -e .
+
+COPY bin /app/bin
+ENV PATH=$PATH:/app/bin
+

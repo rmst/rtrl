@@ -1,0 +1,21 @@
+MuJoCo Pro Lab license activation key, number 6599, type 6.
+
+Issued to Reasoning and Learning Lab, McGill University.
+
+Expires February 20, 2020.
+
+Do not share this file with anyone other than the users covered
+by your license agreement with Roboti LLC. This file activates
+MuJoCo Pro on any computer running any supported OS.
+
+Do not modify this file. Its entire content, including the
+plain text section, is used by the activation manager.
+
+23475c6dca41b3cbd65044835254238ab6e916297f278b6d6fafbd238f3ff9cf
+304534ea828fad1e70ef9d85e43e2414c0170683dfdc41c2b473d168940d25cb
+b9eb76aa19db3e1ee299fda483c1d1930b377815e80c18bb29c3208440446992
+2c2b933cce9074a1e0ccefd8922a78db63105a09a96cf26977ea0403282b382a
+a525e5c466e57e1baea8c2d429cec2c896f084303d471d7b19bbac6f40891585
+88129469f7832a35022b6972a1986aa4c7b4386cee18ba5e2328f3b4279fabee
+73c5503b12790185fe8f07662a5b428b3696e74f1e82c5779f85fc1b57958e36
+1a429379bc801ae58132607037b65e3383f5ade3f5792af96c1e2237770feb05

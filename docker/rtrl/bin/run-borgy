@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -e # exit in case somethings fails
+# set -x
+
+for i in $EXPERIMENTS/$BORGY_JOB_ID*; do
+  python -m rtrl make_and_run "$i/spec.json" "$i/state" &>> "$i/output.txt" &
+  echo training process writing to "$i/output.txt"
+done
+
+for i in $EXPERIMENTS/$BORGY_JOB_ID*; do wait -n; done
+echo all processes exited successfully
+
+
+test_run_borgy(){
+  mkdir /app/exp
+  export EXPERIMENTS=/app/exp
+  export BORGY_JOB_ID=123
+  mkdir /app/exp/123-1
+  python -m rtrl spec 'partial(Training, epochs=2, Env=partial(id="Reacher-v2"))' /app/exp/123-1/spec.json
+  run-borgy
+}
