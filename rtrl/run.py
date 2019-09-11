@@ -5,10 +5,11 @@ import os
 import pickle
 from copy import deepcopy
 from itertools import chain
-from os.path import join
+from os.path import join, exists
 from tempfile import mkdtemp
+from typing import Union
+
 from rtrl.serialization import dump, load, save_json, load_json
-from rtrl.subclass import conf, conf_to_dict
 from rtrl.training import Training
 import sys
 import torch
@@ -32,24 +33,25 @@ def exec_cmd(_, cmd, *args):
   elif cmd == "run":
     run(*args)
   elif cmd == "make_and_run":
-    make_and_run(eval(args[0]), args[1])
+    make_and_run(*args)
 
 
 def spec(run_cls: type, spec_path):
   """Create a spec json file from a subclass of Training or a partial (reconfigured class). See `configurations.py` for examples."""
   run_cls = partial(run_cls)
   save_json(partial_to_dict(run_cls), spec_path)
+  return spec_path
 
 
 def init(spec_path, path):
   """Create a Training instance from a spec json file"""
   run_cls = partial_from_dict(load_json(spec_path))
-  print(yaml.dump(dict(config=partial_to_dict(run_cls)), indent=2, default_flow_style=False, sort_keys=False))
+  print(yaml.dump(dict(spec=partial_to_dict(run_cls)), indent=2, default_flow_style=False, sort_keys=False))
   run_instance: Training = run_cls()
   dump(run_instance, path)
 
 
-def run(path):
+def run(path: str):
   """Load a Training instance and continue running it until the final epoch."""
   while True:
     run_instance: Training = load(path)
@@ -60,20 +62,26 @@ def run(path):
       break
 
 
-def make_and_run(run_cls, path):
-  spec(run_cls, join(path, "spec.json"))
-  init(join(path, "spec.json"), join(path, "run"))
-  print("")
-  run(join(path, "run"))
+def make_and_run(spec_path: str, run_path: str):
+  if not exists(run_path):
+    init(spec_path, run_path)
+    print("")
+  run(run_path)
 
 
-if __name__ == "__main__":
+# === tests ============================================================================================================
+
+def test_spec_make_run():
   path = mkdtemp()
   print("="*70)
   print("Running in:", path)
   print("")
   try:
-    make_and_run(MjTest, path)
+    make_and_run(spec(MjTest, join(path, "spec.json")), join(path, "state"))
   finally:
     import shutil
     shutil.rmtree(path)
+
+
+if __name__ == "__main__":
+  test_spec_make_run()

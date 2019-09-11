@@ -11,14 +11,14 @@ from time import time
 
 import torch
 
-from rtrl.util import lazy_property
+from rtrl.util import external_property
 
 
 class LazyLoad:
   # we use lazy_property here because we don't want to save those properties to file
-  _lazyload_path = lazy_property(lambda s: None)
-  _lazyload_timestamp = lazy_property(lambda s: None)
-  _lazyload_files = lazy_property(lambda s: set())
+  _lazyload_path = external_property(lambda s: None)
+  _lazyload_timestamp = external_property(lambda s: None)
+  _lazyload_files = external_property(lambda s: set())
 
   def __getattribute__(self, item):
     # looking for item in __dict__

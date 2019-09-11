@@ -12,7 +12,7 @@ from torch.nn.functional import mse_loss
 from rtrl.memory import SimpleMemory, collate, partition
 from rtrl.nn import PopArt, no_grad, copy_shared
 from rtrl.serialization import LazyLoad
-from rtrl.util import shallow_copy, lazy_property
+from rtrl.util import shallow_copy, external_property
 import numpy as np
 
 
@@ -21,8 +21,8 @@ class Agent(LazyLoad):
   obsp: InitVar
   acsp: InitVar
 
-  Model = rtrl.models.Mlp
-  OutputNorm = PopArt
+  Model: type = rtrl.models.Mlp
+  OutputNorm: type = PopArt
 
   batchsize: int = 256  # training batch size
   memory_size: int = 1000000  # replay memory size
@@ -39,7 +39,7 @@ class Agent(LazyLoad):
 
   device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-  model_nograd = lazy_property(lambda self: no_grad(copy_shared(self.model)))
+  model_nograd = external_property(lambda self: no_grad(copy_shared(self.model)))
 
   def __post_init__(self, obsp, acsp):
     model = self.Model(obsp, acsp)
@@ -130,18 +130,3 @@ class Agent(LazyLoad):
 
     self.num_updates += 1
     return dict(stats, memory_size=len(self.memory), updates=self.num_updates)
-
-  def __getstate__(self):
-    x: Agent = shallow_copy(self)
-    del x.memory
-    del x.model
-    return dict(state=vars(x), memory=self.memory, model=self.model, model_target=self.model_target, version="1")
-
-  def __setstate__(self, state):
-    version = state.pop("version")
-    assert version == "1", "Incompatible format version"
-    self.model = state.pop("model")
-    self.memory = state.pop("memory")
-    vars(self).update(state.pop("state"))
-
-  __split_state__ = True

@@ -8,7 +8,7 @@ from pandas import DataFrame, Timestamp
 
 from rtrl.serialization import LazyLoad
 from rtrl.testing import Test
-from rtrl.util import pandas_dict, lazy_property
+from rtrl.util import pandas_dict, external_property
 from rtrl.wrappers import StatsWrapper
 from rtrl.envs import GymEnv
 
@@ -24,8 +24,8 @@ class Training(LazyLoad):
   epochs: int = 50
 
   # we use lazy_property because we don't want to save the following properties to file
-  env = lazy_property(lambda self: StatsWrapper(self.Env(seed_val=self.seed + self.epoch), window=self.steps))
-  last_transition = lazy_property(lambda self: (None, 0., True, dict(reset=True)))
+  env = external_property(lambda self: StatsWrapper(self.Env(seed_val=self.seed + self.epoch), window=self.steps))
+  last_transition = external_property(lambda self: (None, 0., True, dict(reset=True)))
 
   def __post_init__(self):
     self.epoch = 0

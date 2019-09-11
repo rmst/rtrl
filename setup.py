@@ -24,6 +24,7 @@ setup(name='rtrl',
             'imageio-ffmpeg',
             'pandas',
             'gym',
+            'pyyaml',
             # 'line_profiler',
       ],
       extras_require={
