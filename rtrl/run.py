@@ -66,6 +66,8 @@ def make_and_run(spec_path: str, run_path: str):
   if not exists(run_path):
     init(spec_path, run_path)
     print("")
+  else:
+    print("=== continuing to run ".ljust(60, '='))
   run(run_path)
 
 
