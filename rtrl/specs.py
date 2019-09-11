@@ -3,8 +3,8 @@ from rtrl.util import partial
 
 MjTest = partial(
   Training,
-  epochs=100,
-  rounds=100,
+  epochs=3,
+  rounds=5,
   steps=10,
   Agent=partial(memory_size=1000000),
   Env=partial(id="Pendulum-v0"),

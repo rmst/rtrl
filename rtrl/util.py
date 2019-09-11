@@ -9,7 +9,7 @@ from weakref import WeakKeyDictionary
 
 import pandas as pd
 
-T = TypeVar('T')
+T = TypeVar('T')  # helps with type inference in some editors
 
 
 def pandas_dict(*args, **kwargs) -> pd.Series:
@@ -22,34 +22,35 @@ def shallow_copy(obj: T) -> T:
   return x
 
 
-# === lazy properties ==================================================================================================
-def external_property(init=None):
-  cache = {}
-  return property(functools.partial(get_cached, init, cache), functools.partial(set_cached, cache))
+# noinspection PyPep8Naming
+class cached_property:
+  """Similar to `property` but after calling the getter/init function the result is cached.
+  It can be used to create object attributes that aren't stored in the object's __dict__. """
 
+  def __init__(self, init=None):
+    self.cache = {}
+    self.init = init
 
-def del_cached(cache, obj_id, _):
-  del cache[obj_id]
+  def __get__(self, instance, owner):
+    if id(instance) not in self.cache:
+      if self.init is None: raise AttributeError()
+      self.__set__(instance, self.init(instance))
+    return self.cache[id(instance)][0]
 
-
-def set_cached(cache, obj, value):
-  cache[id(obj)] = (value, weakref.ref(obj, functools.partial(del_cached, cache, id(obj))))
-
-
-def get_cached(fun, cache, obj):
-  if id(obj) not in cache:
-    if fun is None: raise AttributeError()
-    set_cached(cache, obj, fun(obj))
-  return cache[id(obj)][0]
+  def __set__(self, instance, value):
+    # Cache the attribute value based on the instance id. If instance is garbage collected its cached value is removed.
+    self.cache[id(instance)] = (value, weakref.ref(instance, functools.partial(self.cache.pop, id(instance))))
 
 
 # === partial ==========================================================================================================
 def default():
-  raise ValueError("This is a dummy function not meant to be called. It can be used within a nested `partial` where it is replaced with the default value of a keyword argument.")
+  raise ValueError("This is a dummy function and not meant to be called.")
 
 
 def partial(func: Type[T] = default, *args, **kwargs) -> Union[T, Type[T]]:
-  """Like `functools.partial`. However, when used as a keyword argument within another `partial` and if `default` is supplied as the function, `default` will be replaced with the default value for that keyword argument."""
+  """Like `functools.partial`, except if used as a keyword argument for another `partial` and no function is supplied.
+   Then, the outer `partial` will insert the appropriate default value as the function. E.g. see `specs.py`. """
+
   for k, v in kwargs.items():
     if isinstance(v, functools.partial) and v.func is default:
       kwargs[k] = partial(inspect.signature(func).parameters[k].default, *v.args, **v.keywords)

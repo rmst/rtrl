@@ -11,14 +11,17 @@ from time import time
 
 import torch
 
-from rtrl.util import external_property
+from rtrl.util import cached_property
 
 
 class LazyLoad:
+  """Can be subclassed. Instances can be used in conjunction with `dump` and `load` below.
+  If restored via `load`, each attribute is loaded from disk when it is accessed for the first time."""
+
   # we use lazy_property here because we don't want to save those properties to file
-  _lazyload_path = external_property(lambda s: None)
-  _lazyload_timestamp = external_property(lambda s: None)
-  _lazyload_files = external_property(lambda s: set())
+  _lazyload_path = cached_property(lambda s: None)
+  _lazyload_timestamp = cached_property(lambda s: None)
+  _lazyload_files = cached_property(lambda s: set())
 
   def __getattribute__(self, item):
     # looking for item in __dict__
@@ -26,7 +29,7 @@ class LazyLoad:
     if item in d:
       return d[item]
 
-    # looking to load item from files
+    # looking to load item from files, if found add it to __dict__
     f = object.__getattribute__(self, "_lazyload_files")
     if item in f:
       path = join(self._lazyload_path, item)
@@ -43,8 +46,8 @@ class LazyLoad:
 
 
 def dump(obj, path):
-  """Like `pickle.dump`. If `obj` is an instance of `LazyLoad` its components are saved as individual files such that they can be loaded lazily later.
-  """
+  """Like `pickle.dump`, except if `obj` is an instance of `LazyLoad`.
+  Then its components are saved as individual files such that they can be loaded lazily later."""
 
   if not isinstance(obj, LazyLoad):
     # Note: Using `torch.save(obj, path)` seems no longer necessary, see https://blog.dask.org/2018/07/23/protocols-pickle.
@@ -64,7 +67,8 @@ def dump(obj, path):
 
 
 def load(path):
-  """Like `pickle.load`, except if `path` points to a directory. Then it attempts to reassemble an object from the directory contents."""
+  """Like `pickle.load`, except if `path` points to a directory.
+  Then it attempts to reassemble a LazyLoad object from the directory contents."""
 
   if not os.path.isdir(path):
     with open(path, 'rb') as f:
@@ -83,7 +87,7 @@ def load(path):
   return obj
 
 
-# === Utilities and Testing ============================================================================================
+# === Utilities ========================================================================================================
 
 def dumps_torch(obj):
   with io.BytesIO() as f:
@@ -104,24 +108,3 @@ def save_json(d, path):
 def load_json(path):
   with open(path, 'r', encoding='utf-8') as f:
     return json.load(f)
-
-
-
-# def test_save_split_dict():
-#   from tempfile import mkdtemp
-#
-#   path = mkdtemp() + '/test'
-#   try:
-#     d = Directory(dict(a=3, b="fjdks"))
-#     dump(d, path)
-#
-#     e = load(path)
-#     assert d == e
-#     print("success!")
-#
-#   finally:
-#     shutil.rmtree(path)
-#
-#
-# if __name__ == "__main__":
-#   test_save_split_dict()

@@ -9,14 +9,14 @@ from os.path import join, exists
 from tempfile import mkdtemp
 from typing import Union
 
-from rtrl.serialization import dump, load, save_json, load_json
+from rtrl.lazyload import dump, load, save_json, load_json
 from rtrl.training import Training
 import sys
 import torch
 import rtrl.models
 import gym.spaces
 import pandas as pd
-from rtrl.configurations import *
+from rtrl.specs import *
 
 from rtrl.util import partial, partial_to_dict, partial_from_dict
 
@@ -37,7 +37,7 @@ def exec_cmd(_, cmd, *args):
 
 
 def spec(run_cls: type, spec_path):
-  """Create a spec json file from a subclass of Training or a partial (reconfigured class). See `configurations.py` for examples."""
+  """Create a spec json file from a subclass of Training or a partial (reconfigured class). See `specs.py` for examples."""
   run_cls = partial(run_cls)
   save_json(partial_to_dict(run_cls), spec_path)
   return spec_path
@@ -46,7 +46,8 @@ def spec(run_cls: type, spec_path):
 def init(spec_path, path):
   """Create a Training instance from a spec json file"""
   run_cls = partial_from_dict(load_json(spec_path))
-  print(yaml.dump(dict(spec=partial_to_dict(run_cls)), indent=2, default_flow_style=False, sort_keys=False))
+  print("=== specification ".ljust(70, "="))
+  print(yaml.dump(partial_to_dict(run_cls), indent=3, default_flow_style=False, sort_keys=False), end="")
   run_instance: Training = run_cls()
   dump(run_instance, path)
 
@@ -67,7 +68,7 @@ def make_and_run(spec_path: str, run_path: str):
     init(spec_path, run_path)
     print("")
   else:
-    print("=== continuing to run ".ljust(60, '='))
+    print("\n\n\n\n" + "Continuing to run..." + "\n\n")
   run(run_path)
 
 
@@ -75,7 +76,7 @@ def make_and_run(spec_path: str, run_path: str):
 
 def test_spec_make_run():
   path = mkdtemp()
-  print("="*70)
+  print("="*70 + "\n")
   print("Running in:", path)
   print("")
   try:

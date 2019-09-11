@@ -29,7 +29,7 @@ class Test:
     return vars(x)
 
   def run(self, number=0):
-    t0 = pd.Timestamp.now()
+    t0 = pd.Timestamp.utcnow()
     env = self.Env(seed_val=self.base_seed + number)
     env = StatsWrapper(env, window=self.steps)
 
@@ -41,7 +41,7 @@ class Test:
       # action = env.action_space.sample()
       obs, r, done, info = env.step(action)
 
-    return pandas_dict(env.stats(), round_time=pd.Timestamp.now() - t0)
+    return pandas_dict(env.stats(), round_time=pd.Timestamp.utcnow() - t0)
 
   def stats(self):
     st = self.result_handle.get()

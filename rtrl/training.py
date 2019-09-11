@@ -6,9 +6,9 @@ import pandas as pd
 import rtrl.sac
 from pandas import DataFrame, Timestamp
 
-from rtrl.serialization import LazyLoad
+from rtrl.lazyload import LazyLoad
 from rtrl.testing import Test
-from rtrl.util import pandas_dict, external_property
+from rtrl.util import pandas_dict, cached_property
 from rtrl.wrappers import StatsWrapper
 from rtrl.envs import GymEnv
 
@@ -24,13 +24,12 @@ class Training(LazyLoad):
   epochs: int = 50
 
   # we use lazy_property because we don't want to save the following properties to file
-  env = external_property(lambda self: StatsWrapper(self.Env(seed_val=self.seed + self.epoch), window=self.steps))
-  last_transition = external_property(lambda self: (None, 0., True, dict(reset=True)))
+  env = cached_property(lambda self: StatsWrapper(self.Env(seed_val=self.seed + self.epoch), window=self.steps))
+  last_transition = cached_property(lambda self: (None, 0., True, dict(reset=True)))
 
   def __post_init__(self):
     self.epoch = 0
     # print("Environment:", self.env)
-
     # noinspection PyArgumentList
     self.agent = self.Agent(self.env.observation_space, self.env.action_space)
 
@@ -38,11 +37,11 @@ class Training(LazyLoad):
     self.time = pd.Timedelta(0)
 
   def run_epoch(self):
-    t0 = pd.Timestamp.now()
+    t0 = pd.Timestamp.utcnow()
     stats = []
 
     for rnd in range(self.rounds):
-      print(f"=== epoch {self.epoch}/{self.epochs} ".ljust(20, '='), f"round {rnd}/{self.rounds} ".ljust(50, '='))
+      print(f"=== epoch {self.epoch}/{self.epochs} ".ljust(20, '=') + f" round {rnd}/{self.rounds} ".ljust(50, '='))
       stats_training = []
 
       # test runs in parallel to the training process
@@ -65,31 +64,13 @@ class Training(LazyLoad):
 
         self.last_transition = self.env.step(action)
 
-      self.time += Timestamp.now() - t0
+      self.time += Timestamp.utcnow() - t0
       stats += pandas_dict(**self.env.stats(),
                            **test.stats().add_prefix("test_"),
                            **DataFrame(stats_training).mean(skipna=True),
-                           time=self.time, round_time=Timestamp.now() - t0),  # appending to stats
+                           time=self.time, round_time=Timestamp.utcnow() - t0),  # appending to stats
 
       print(stats[-1].add_prefix("  ").to_string(), '\n')
 
     self.stats = self.stats.append(stats, ignore_index=True, sort=True)  # concat with stats from previous episodes
     self.epoch += 1
-
-  # def __getstate__(self):
-  #   x: Training = shallow_copy(self)
-  #   del x.env, x.last_transition  # not saving that for now
-  #   del x.agent, x.stats
-  #   return dict(vars=vars(x), agent=self.agent, stats=self.stats, version="1")
-  #
-  # def __setstate__(self, state):
-  #   version = state.pop("version")
-  #   assert version == "1", "Incompatible format version"
-  #
-  #   self.agent = state.pop("agent")
-  #   self.stats = state.pop("stats")
-  #   vars(self).update(state.pop("vars"))
-  #   self.env = StatsWrapper(self.Env(seed=self.seed + self.epoch), window=self.steps)
-  #   self.last_transition = None, np.asarray(0., np.float32), True, dict(reset=True)
-
-

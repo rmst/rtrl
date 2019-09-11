@@ -9,10 +9,11 @@ import torch
 from torch import optim
 from torch.nn.functional import mse_loss
 
+import rtrl.nn
 from rtrl.memory import SimpleMemory, collate, partition
 from rtrl.nn import PopArt, no_grad, copy_shared
-from rtrl.serialization import LazyLoad
-from rtrl.util import shallow_copy, external_property
+from rtrl.lazyload import LazyLoad
+from rtrl.util import shallow_copy, cached_property
 import numpy as np
 
 
@@ -39,7 +40,7 @@ class Agent(LazyLoad):
 
   device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-  model_nograd = external_property(lambda self: no_grad(copy_shared(self.model)))
+  model_nograd = cached_property(lambda self: no_grad(copy_shared(self.model)))
 
   def __post_init__(self, obsp, acsp):
     model = self.Model(obsp, acsp)
@@ -52,8 +53,8 @@ class Agent(LazyLoad):
 
     self.num_updates = 0
 
-    self.outnorm = self.OutputNorm(1, device=self.device)
-    self.outnorm_target = self.OutputNorm(1, device=self.device)
+    self.outnorm = self.OutputNorm(dim=1)
+    self.outnorm_target = self.OutputNorm(dim=1)
 
   def act(self, obs, r, done, info, train=False):
     stats = {}
@@ -75,7 +76,7 @@ class Agent(LazyLoad):
     v_pred = self.model.value(obs)
 
     policy_outputs = self.model.actor(obs)  # should include logprob
-    assert isinstance(policy_outputs.base_dist, rtrl.models.TanhNormal)
+    assert isinstance(policy_outputs.base_dist, rtrl.nn.TanhNormal)
     new_actions = policy_outputs.rsample()
     log_pi = policy_outputs.log_prob(new_actions)[:, None]
     assert log_pi.dim() == 2 and log_pi.shape[1] == 1, "use Independent(Normal(...), 1) instead of Normal(...)"

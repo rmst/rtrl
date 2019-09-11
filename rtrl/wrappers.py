@@ -5,6 +5,8 @@ import numpy as np
 
 
 class StatsWrapper(gym.Wrapper):
+  """Compute running statistics (return, number of episodes, etc.) over a certain time window."""
+
   def __init__(self, env, window=100):
     super().__init__(env)
     self.reward_hist = deque([0], maxlen=window + 1)
@@ -61,13 +63,6 @@ class DictActionWrapper(gym.Wrapper):
     return self.env.step(action['value'])
 
 
-def get_wrapper_by_class(env, cls):
-  if isinstance(env, cls):
-    return env
-  elif isinstance(env, gym.Wrapper):
-    return get_wrapper_by_class(env.env, cls)
-
-
 class NormalizeActionWrapper(gym.Wrapper):
   def __init__(self, env):
     super().__init__(env)
@@ -85,8 +80,8 @@ class NormalizeActionWrapper(gym.Wrapper):
 
 
 class TimeLimitResetWrapper(gym.Wrapper):
-  """"""
-  NO_LIMIT = 1 << 31
+  """Adds a `reset` key to `info` that indicates whether an episode was ended just because of a time limit.
+  This can be important as running out of time, should usually not be considered a "true" terminal state."""
 
   def __init__(self, env, max_steps=None, key='reset'):
     super().__init__(env)
@@ -95,7 +90,7 @@ class TimeLimitResetWrapper(gym.Wrapper):
     self.enforce = bool(max_steps)
     if max_steps is None:
       tl = get_wrapper_by_class(env, TimeLimit)
-      max_steps = self.NO_LIMIT if tl is None else tl._max_episode_steps
+      max_steps = 1 << 31 if tl is None else tl._max_episode_steps
       # print("TimeLimitResetWrapper.max_steps =", max_steps)
 
     self.max_steps = max_steps
@@ -109,7 +104,6 @@ class TimeLimitResetWrapper(gym.Wrapper):
   def step(self, action):
     m, r, d, info = self.env.step(action)
 
-    # we don't consider it a "true" terminal state if we ran out of time
     reset = (self.t == self.max_steps - 1) or info.get(self.reset_key, False)
     if not self.enforce:
       if reset:
@@ -121,8 +115,31 @@ class TimeLimitResetWrapper(gym.Wrapper):
     return m, r, d, info
 
 
+class Float64ToFloat32(gym.ObservationWrapper):
+  """Converts np.float64 arrays in the observations to np.float32 arrays."""
+
+  # TODO: change observation/action spaces to correct dtype
+  def observation(self, observation):
+    observation = deepmap({np.ndarray: float64_to_float32}, observation)
+    return observation
+
+  def step(self, action):
+    s, r, d, info = super().step(action)
+    return s, r, d, info
+
+
+# === Utilities ========================================================================================================
+
+def get_wrapper_by_class(env, cls):
+  if isinstance(env, cls):
+    return env
+  elif isinstance(env, gym.Wrapper):
+    return get_wrapper_by_class(env.env, cls)
+
+
 def deepmap(f, m):
-  """Example: deepmap({torch.Tensor: lambda t: t.detach()}, x)"""
+  """Apply functions to the leaves of a dictionary or list, depending type of the leaf value.
+  Example: deepmap({torch.Tensor: lambda t: t.detach()}, x)."""
   for cls in f:
     if isinstance(m, cls):
       return f[cls](m)
@@ -136,18 +153,3 @@ def deepmap(f, m):
 
 def float64_to_float32(x):
     return np.asarray(x, np.float32) if x.dtype == np.float64 else x
-
-
-class Float64ToFloat32(gym.ObservationWrapper):
-  """converts states and rewards to float32"""
-
-  # TODO: change observation/action spaces to correct dtype
-  def observation(self, observation):
-    observation = deepmap({np.ndarray: float64_to_float32}, observation)
-    return observation
-
-  def step(self, action):
-    s, r, d, info = super().step(action)
-    return s, r, d, info
-
-

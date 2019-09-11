@@ -6,11 +6,9 @@ import sys
 if sys.version_info < (3, 7):
   sys.exit('Sorry, Python < 3.7 is not supported')
 
-with open(join(dirname(__file__), "version"), 'r') as f:
-  __version__ = f.read()
 
 setup(name='rtrl',
-      version=__version__,
+      version="0.1",
       description='Real Time Reinforcement Learning',
       author='Simon Ramstedt',
       author_email='simonramstedt@gmail.com',
