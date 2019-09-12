@@ -1,0 +1,18 @@
+# syntax=docker/dockerfile:1.0.0-experimental
+# (experimental ssh forwarding: https://medium.com/@tonistiigi/build-secrets-and-ssh-forwarding-in-docker-18-09-ae8161d066)
+
+# BASE_IMAGE has to have Python 3.7+ 
+ARG BASE_IMAGE=gym:latest
+FROM ${BASE_IMAGE}
+WORKDIR /app
+
+ENV GIT_SSH_COMMAND 'ssh -o "StrictHostKeyChecking no"'
+
+ARG RTRL_REV
+RUN --mount=type=ssh git clone git@github.com:rmst/rtrl.git /app/rtrl \
+  && cd /app/rtrl \
+  && git reset --hard $RTRL_REV \
+  && pip --no-cache-dir install -e .
+
+COPY bin /app/bin
+ENV PATH=$PATH:/app/bin

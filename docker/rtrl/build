@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+source ../utilrc.sh
+
+RTRL_REV=${2-$(master-rev git@github.com:rmst/rtrl.git)}
+
+pushd ../gym; bash build rtrl_base; popd
+
+# using experimental ssh forwarding (see Dockerfile)
+DOCKER_BUILDKIT=1 docker build --ssh default -t $1 --build-arg BASE=rtrl_base --build-arg RTRL_REV=$RTRL_REV .
+
+echo "Built '$1' with rtrl revision $RTRL_REV based on gym"

@@ -1,5 +1,4 @@
 ARG BASE=nvidia/cuda:9.0-cudnn7-runtime-ubuntu16.04
-# ARG BASE=nvidia/cudagl:10.0-devel-ubuntu16.04
 FROM ${BASE}
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+source ../utilrc.sh
+
+MLAGENTS_REV=$(master-rev git@github.com:rmst/ml-agents-frozen.git)
+AVENUE_REV=${2-$(master-rev git@github.com:ElementAI/Avenue.git)}
+
+docker build -t unity3d - < unity3d.dockerfile
+docker build -t unity3d-py --build-arg BASE=unity3d ../pytorch
+docker build -t unity3d-gym --build-arg BASE=unity3d-py --build-arg GYM_FEATURES="" ../gym
+
+# using experimental ssh forwarding (see Dockerfile)
+DOCKER_BUILDKIT=1 docker build --ssh default -t $1 \
+  --build-arg BASE=unity3d-py \
+  --build-arg MLAGENTS_REV=$MLAGENTS_REV \
+  --build-arg AVENUE_REV=$AVENUE_REV . 
+
+echo "Built '$1' with Avenue revision $AVENUE_REV"

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -e  # exit on error
+set -u  # raise error if variables undefined
+
+MJKEY_FILE=${MJKEY_FILE-'/dev/null'}
+
+docker build -t $1 --build-arg MJ_KEY="$(cat $MJKEY_FILE)" .
+
+echo "Built '$1'"

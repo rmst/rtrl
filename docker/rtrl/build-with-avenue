@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+source ../utilrc.sh
+
+RTRL_REV=${2-$(master-rev git@github.com:rmst/rtrl.git)}
+AVENUE_REV=${3-$(master-rev git@github.com:ElementAI/Avenue.git)}
+
+pushd ../avenue; bash build rtrl_base $AVENUE_REV; popd
+
+# using experimental ssh forwarding (see Dockerfile)
+DOCKER_BUILDKIT=1 docker build --ssh default -t $1 --build-arg BASE=rtrl_base --build-arg RTRL_REV=$RTRL_REV .
+
+echo "Built '$1' with rtrl revision $RTRL_REV based on avenue"
