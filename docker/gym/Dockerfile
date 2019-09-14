@@ -40,8 +40,12 @@ ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:${LD_LIBRARY_PATH}
 ENV MUJOCO_PY_MJKEY_PATH /app/.mujoco/mjkey.txt
 ENV MUJOCO_PY_MUJOCO_PATH /app/.mujoco/mujoco200
 
-# mujoco-py requirements https://github.com/openai/mujoco-py/blob/master/requirements.txt
-RUN pip --no-cache-dir install glfw numpy Cython imageio cffi lockfile
+# RUN pip --no-cache-dir install glfw numpy Cython imageio cffi lockfile
+ARG MUJOCOPY_REV=96284904cd84d15781682928345efaf4edd765c8
+RUN git clone https://github.com/openai/mujoco-py.git \
+  && cd mujoco-py \
+  && git reset --hard ${MUJOCOPY_REV} \
+  && pip --no-cache-dir install -e .
 
 ARG GYM_REV=c33cfd8b2cc8cac6c346bc2182cd568ef33b8821
 ARG GYM_FEATURES='[mujoco]'
