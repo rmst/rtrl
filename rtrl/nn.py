@@ -37,7 +37,7 @@ class PopArt:
     self.std = torch.ones((dim,))
 
   def to(self, device):
-    [t.to(device) for t in vars(self).values() if torch.is_tensor(t)]
+    [setattr(self, k, v.to(device)) for k, v in vars(self).items() if torch.is_tensor(v)]
     return self
 
   def update(self, targets):
