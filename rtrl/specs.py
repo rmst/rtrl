@@ -12,9 +12,9 @@ MjTest = partial(
 
 MjTraining = partial(
   Training,
-  epochs=100,
-  rounds=100,
-  steps=100,
+  epochs=20,
+  rounds=50,
+  steps=1000,
   Agent=partial(memory_size=1000000, batchsize=256),
   Env=partial(id='Walker2d-v2'),
 )

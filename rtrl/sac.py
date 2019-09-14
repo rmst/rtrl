@@ -27,8 +27,8 @@ class Agent(LazyLoad):
 
   batchsize: int = 256  # training batch size
   memory_size: int = 1000000  # replay memory size
-  lr_actor: float = 0.0003
-  lr: float = 0.0003
+  lr_actor: float = 0.003
+  lr: float = 0.003
   discount: float = 0.99
   polyak: float = 0.995  # = 1 - 0.005
   policy_freq: int = 1
@@ -36,7 +36,7 @@ class Agent(LazyLoad):
   keep_reset_transitions: int = 0
   reward_scale: float = 5.
   entropy_scale: float = 1.
-  start_training: int = 200
+  start_training: int = 10000
 
   device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
