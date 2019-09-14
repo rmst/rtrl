@@ -40,9 +40,6 @@ ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:${LD_LIBRARY_PATH}
 ENV MUJOCO_PY_MJKEY_PATH /app/.mujoco/mjkey.txt
 ENV MUJOCO_PY_MUJOCO_PATH /app/.mujoco/mujoco200
 
-# the following line should be in a repo further upstream
-RUN pip install --upgrade pip
-
 ARG MUJOCOPY_REV=96284904cd84d15781682928345efaf4edd765c8
 RUN git clone https://github.com/openai/mujoco-py.git \
   && cd mujoco-py \
