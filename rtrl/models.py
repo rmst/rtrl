@@ -53,7 +53,7 @@ class Mlp(Module):
   hidden_units: int = 256
   num_critics: int = 2
 
-  device = cached_property(lambda self: "cpu")
+  device: str = 'cpu'
 
   def __post_init__(self, observation_space, action_space):
     super().__init__()
