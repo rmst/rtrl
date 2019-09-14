@@ -46,8 +46,9 @@ RUN git clone https://github.com/openai/mujoco-py.git \
   && cd mujoco-py \
   && git reset --hard ${MUJOCOPY_REV} \
   && pip --no-cache-dir install --no-use-pep517 -e . \
-  && chmod 777 -R .
-  
+  && chmod 777 -R . \
+  && chmod 777 -R /app/miniconda/lib/python3.7/site-packages/mujoco_py
+
 ARG GYM_REV=c33cfd8b2cc8cac6c346bc2182cd568ef33b8821
 ARG GYM_FEATURES='[mujoco]'
 RUN git clone https://github.com/openai/gym \
