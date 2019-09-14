@@ -23,4 +23,5 @@ RUN curl -so miniconda.sh https://repo.continuum.io/miniconda/Miniconda3-4.5.11-
 
 ENV PATH=/app/miniconda/bin:$PATH
 
-RUN pip --no-cache-dir install torch==1.1.0
+RUN  pip install --no-cache-dir --upgrade pip \
+  && pip --no-cache-dir install torch==1.1.0
