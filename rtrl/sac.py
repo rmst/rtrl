@@ -53,8 +53,8 @@ class Agent(LazyLoad):
 
     self.num_updates = 0
 
-    self.outnorm = self.OutputNorm(dim=1)
-    self.outnorm_target = self.OutputNorm(dim=1)
+    self.outnorm = self.OutputNorm(dim=1).to(self.device)
+    self.outnorm_target = self.OutputNorm(dim=1).to(self.device)
 
   def act(self, obs, r, done, info, train=False):
     stats = {}
