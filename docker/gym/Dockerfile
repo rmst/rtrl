@@ -1,5 +1,5 @@
 ARG BASE
-FROM ${BASE}
+FROM ${BASE
 
 # mujoco-py requirements https://github.com/openai/mujoco-py/blob/master/Dockerfile
 RUN apt-get update -q \
@@ -45,7 +45,7 @@ ARG MUJOCOPY_REV=96284904cd84d15781682928345efaf4edd765c8
 RUN git clone https://github.com/openai/mujoco-py.git \
   && cd mujoco-py \
   && git reset --hard ${MUJOCOPY_REV} \
-  && pip --no-cache-dir install -e .
+  && pip --no-cache-dir install --no-use-pep517 -e . 
 
 ARG GYM_REV=c33cfd8b2cc8cac6c346bc2182cd568ef33b8821
 ARG GYM_FEATURES='[mujoco]'
