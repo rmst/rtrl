@@ -1,5 +1,5 @@
 ARG BASE
-FROM ${BASE
+FROM ${BASE}
 
 # mujoco-py requirements https://github.com/openai/mujoco-py/blob/master/Dockerfile
 RUN apt-get update -q \
