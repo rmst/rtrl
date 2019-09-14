@@ -56,11 +56,11 @@ def init(spec_path, path):
 def run(path: str):
   """Load a Training instance and continue running it until the final epoch."""
   while True:
+    time.sleep(1)  # on network file systems writing files is asynchronous and we need to wait for sync
     run_instance: Training = load(path)
     run_instance.run_epoch()
     dump(run_instance, path)
     print("")
-    time.sleep(1)  # on network file systems writing files is asynchronous and we need to wait for sync
     if run_instance.epoch == run_instance.epochs:
       break
 
