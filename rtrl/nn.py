@@ -38,6 +38,7 @@ class PopArt:
 
   def to(self, device):
     [t.to(device) for t in vars(self).values() if isinstance(t, torch.Tensor)]
+    return self
 
   def update(self, targets):
     targets = targets.detach()

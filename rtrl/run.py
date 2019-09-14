@@ -82,7 +82,7 @@ def test_spec_make_run():
   print("Running in:", path)
   print("")
   try:
-    make_and_run(spec(MjTest, join(path, "spec.json")), join(path, "state"))
+    make_and_run(spec(Training, join(path, "spec.json")), join(path, "state"))
   finally:
     import shutil
     shutil.rmtree(path)
