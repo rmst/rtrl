@@ -61,6 +61,8 @@ def partial_to_dict(p: functools.partial, version="1"):
   assert not p.args, "So far only keyword arguments are supported, here"
   fields = {k: v.default for k, v in inspect.signature(p.func).parameters.items()}
   fields = {k: v for k, v in fields.items() if v is not inspect.Parameter.empty}
+  diff = p.keywords.keys() - fields.keys()
+  assert not diff, f"There are invalid keywords present: {diff}"
   fields.update(p.keywords)
   nested = {k: partial_to_dict(partial(v), version="") for k, v in fields.items() if callable(v)}
   simple = {k: v for k, v in fields.items() if k not in nested}
