@@ -4,6 +4,7 @@ import torch
 from rtrl.memory import collate, partition
 from torch.nn import Linear, Sequential, ReLU, ModuleList, Module
 from rtrl.nn import TanhNormalLayer
+from rtrl.util import cached_property
 
 
 class MlpActionValue(Sequential):
@@ -52,6 +53,8 @@ class Mlp(Module):
   hidden_units: int = 256
   num_critics: int = 2
 
+  device = cached_property(lambda self: "cpu")
+
   def __post_init__(self, observation_space, action_space):
     super().__init__()
     dim_obs = observation_space.spaces['vector'].shape[0]
@@ -60,8 +63,12 @@ class Mlp(Module):
     self.value = MlpValue(dim_obs, dim_action, self.hidden_units)
     self.actor = MlpPolicy(dim_obs, dim_action, self.hidden_units)
 
+  def to(self, device):
+    self.device = device
+    return super().to(device=device)
+
   def act(self, obs, r, done, info):
-    obs_col = collate((obs,))
+    obs_col = collate((obs,), device=self.device)
     with torch.no_grad():
       action_distribution = self.actor(obs_col)
       action_col = action_distribution.sample()
