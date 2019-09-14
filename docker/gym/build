@@ -4,6 +4,6 @@ set -u  # raise error if variables undefined
 
 MJKEY_FILE=${MJKEY_FILE-'/dev/null'}
 pushd ../pytorch; docker build -t gym-base . ; popd
-docker build -t $1 --build-arg BASE=gym-base -build-arg MJ_KEY="$(cat $MJKEY_FILE)" .
+docker build -t $1 --build-arg BASE=gym-base --build-arg MJ_KEY="$(cat $MJKEY_FILE)" .
 
 echo "Built '$1'"
