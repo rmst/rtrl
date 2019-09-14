@@ -3,6 +3,7 @@ import inspect
 import json
 import os
 import pickle
+import time
 from copy import deepcopy
 from itertools import chain
 from os.path import join, exists
@@ -59,6 +60,7 @@ def run(path: str):
     run_instance.run_epoch()
     dump(run_instance, path)
     print("")
+    time.sleep(1)  # on network file systems writing files is asynchronous and we need to wait for sync
     if run_instance.epoch == run_instance.epochs:
       break
 

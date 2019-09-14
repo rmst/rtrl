@@ -4,6 +4,7 @@ import pickle
 import sys
 import shutil
 import io
+import tempfile
 from importlib import import_module
 from itertools import chain
 from os.path import join, exists
@@ -33,7 +34,8 @@ class LazyLoad:
     f = object.__getattribute__(self, "_lazyload_files")
     if item in f:
       path = join(self._lazyload_path, item)
-      assert os.path.getmtime(path) <= self._lazyload_timestamp, f"{path} changed after object creation"  # we currently don't check nested LazyLoad objects
+      mtime = os.path.getmtime(path)
+      assert mtime <= self._lazyload_timestamp, f"{path} changed after object creation ({mtime} > {self._lazyload_timestamp}"  # we currently don't check nested LazyLoad objects
       v = self.__dict__[item] = load(path)
       setattr(self, item, v)
       return v
@@ -45,7 +47,7 @@ class LazyLoad:
     return chain(super().__dir__(), self._lazyload_files)
 
 
-def dump(obj, path):
+def dump(obj, path=None):
   """Like `pickle.dump`, except if `obj` is an instance of `LazyLoad`.
   Then its components are saved as individual files such that they can be loaded lazily later."""
 
@@ -64,6 +66,7 @@ def dump(obj, path):
   other = {k: v for k, v in vars(obj).items() if k not in simple}
   save_json(dict(module=obj.__class__.__module__, cls=obj.__class__.__qualname__, version="1", __dict__=simple), join(path, "__meta__.json"))
   [dump(v, os.path.join(path, k)) for k, v in other.items()]
+  return path
 
 
 def load(path):
