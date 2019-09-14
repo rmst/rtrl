@@ -53,5 +53,6 @@ ARG GYM_FEATURES='[mujoco]'
 RUN git clone https://github.com/openai/gym \
  && cd gym \
  && git reset --hard $GYM_REV \
- && pip --no-cache-dir install -e ."${GYM_FEATURES}" \
- && chmod 777 -R /app/miniconda/lib/python3.7/site-packages
+ && pip --no-cache-dir install -e ."${GYM_FEATURES}"
+
+RUN chmod 777 -R /app/miniconda/lib/python3.7/site-packages/mujoco_py
