@@ -41,17 +41,18 @@ ENV LD_LIBRARY_PATH /usr/local/nvidia/lib64:${LD_LIBRARY_PATH}
 ENV MUJOCO_PY_MJKEY_PATH /app/.mujoco/mjkey.txt
 ENV MUJOCO_PY_MUJOCO_PATH /app/.mujoco/mujoco200
 
-ARG MUJOCOPY_REV=96284904cd84d15781682928345efaf4edd765c8
-RUN git clone https://github.com/openai/mujoco-py.git \
-  && cd mujoco-py \
-  && git reset --hard ${MUJOCOPY_REV} \
-  && pip --no-cache-dir install .
-
 ARG GYM_REV=c33cfd8b2cc8cac6c346bc2182cd568ef33b8821
+
 ARG GYM_FEATURES='[mujoco]'
 RUN git clone https://github.com/openai/gym \
  && cd gym \
  && git reset --hard $GYM_REV \
  && pip --no-cache-dir install -e ."${GYM_FEATURES}"
 
-RUN chmod 777 -R /app/miniconda/lib/python3.7/site-packages/mujoco_py
+# we need to change the permissions of mujoco_py/generated because mujoco-py will fail if it can't modifiy this directory
+RUN printf "\
+try: import mujoco_py, os \n\
+except: exit \n\
+p = os.path.join(os.path.dirname(mujoco_py.__file__), 'generated') \n\
+print(p) \n\
+os.chmod(p, 0o777) \n" | python
