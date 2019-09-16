@@ -10,7 +10,6 @@ from os.path import join, exists
 from tempfile import mkdtemp
 from typing import Union
 
-from rtrl.lazyload import dump, load, save_json, load_json
 from rtrl.training import Training
 import sys
 import torch
@@ -19,7 +18,7 @@ import gym.spaces
 import pandas as pd
 from rtrl.specs import *
 
-from rtrl.util import partial, partial_to_dict, partial_from_dict
+from rtrl.util import partial, partial_to_dict, partial_from_dict, dump, load, save_json, load_json
 
 import yaml
 
@@ -33,8 +32,8 @@ def exec_cmd(_, cmd, *args):
     init(*args)
   elif cmd == "run":
     run(*args)
-  elif cmd == "make_and_run":
-    make_and_run(*args)
+  elif cmd == "init_and_run":
+    init_and_run(*args)
 
 
 def spec(run_cls: type, spec_path):
@@ -50,23 +49,25 @@ def init(spec_path, path):
   print("=== specification ".ljust(70, "="))
   print(yaml.dump(partial_to_dict(run_cls), indent=3, default_flow_style=False, sort_keys=False), end="")
   run_instance: Training = run_cls()
-  dump(run_instance, path)
+  dump(run_instance, path+'/state')
+  dump(pd.DataFrame(), path+"/stats")
 
 
 def run(path: str):
   """Load a Training instance and continue running it until the final epoch."""
   while True:
     time.sleep(1)  # on network file systems writing files is asynchronous and we need to wait for sync
-    run_instance: Training = load(path)
-    run_instance.run_epoch()
-    dump(run_instance, path)
+    run_instance: Training = load(path+"/state")
+    stats = run_instance.run_epoch()
+    dump(load(path+'/stats').append(stats, ignore_index=True), path+"/stats")  # concat with stats from previous episodes
+    dump(run_instance, path+"/state")
     print("")
     if run_instance.epoch == run_instance.epochs:
       break
 
 
-def make_and_run(spec_path: str, run_path: str):
-  if not exists(run_path):
+def init_and_run(spec_path: str, run_path: str):
+  if not exists(run_path+'/state'):
     init(spec_path, run_path)
     print("")
   else:
@@ -76,18 +77,19 @@ def make_and_run(spec_path: str, run_path: str):
 
 # === tests ============================================================================================================
 
-def test_spec_make_run():
+def test_spec_init_run():
   path = mkdtemp()
   # os.environ.update(LD_LIBRARY_PATH=os.environ.get("LD_LIBRARY_PATH", "") + ":" + os.environ["HOME"] + "/.mujoco/mujoco200/bin")
   print("="*70 + "\n")
   print("Running in:", path)
   print("")
   try:
-    make_and_run(spec(MjTraining, join(path, "spec.json")), join(path, "state"))
+    init_and_run(spec(Training, path+"/spec.json"), path)
+    # make_and_run(spec(MjTraining, join(path, "spec.json")), join(path, "state"))
   finally:
     import shutil
     shutil.rmtree(path)
 
 
 if __name__ == "__main__":
-  test_spec_make_run()
+  test_spec_init_run()

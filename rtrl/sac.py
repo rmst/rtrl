@@ -12,13 +12,12 @@ from torch.nn.functional import mse_loss
 import rtrl.nn
 from rtrl.memory import SimpleMemory, collate, partition
 from rtrl.nn import PopArt, no_grad, copy_shared
-from rtrl.lazyload import LazyLoad
 from rtrl.util import shallow_copy, cached_property
 import numpy as np
 
 
 @dataclass
-class Agent(LazyLoad):
+class Agent:
   obsp: InitVar
   acsp: InitVar
 
@@ -36,7 +35,7 @@ class Agent(LazyLoad):
   keep_reset_transitions: int = 0
   reward_scale: float = 5.
   entropy_scale: float = 1.
-  start_training: int = 10000
+  start_training: int = 256
 
   device = "cuda:0" if torch.cuda.is_available() else "cpu"
 

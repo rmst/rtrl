@@ -1,5 +1,8 @@
 import functools
 import inspect
+import io
+import json
+import pickle
 import weakref
 from dataclasses import is_dataclass, dataclass, make_dataclass, fields, Field
 from importlib import import_module
@@ -8,6 +11,7 @@ from typing import TypeVar, Union, Type, Callable, Any
 from weakref import WeakKeyDictionary
 
 import pandas as pd
+import torch
 
 T = TypeVar('T')  # helps with type inference in some editors
 
@@ -77,3 +81,35 @@ def partial_from_dict(d: dict):
   module, name = d.pop("__func__").split(":")
   func = getattr(import_module(module), name)
   return partial(func, **d)
+
+
+# === serialization ====================================================================================================
+def dump(obj, path):
+  with open(path, 'wb') as f:
+    return pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+
+def load(path):
+  with open(path, 'rb') as f:
+    return pickle.load(f)
+
+
+def dumps_torch(obj):
+  with io.BytesIO() as f:
+    torch.save(obj, f)
+    return f.getvalue()
+
+
+def loads_torch(b: bytes):
+  with io.BytesIO(b) as f:
+    return torch.load(f)
+
+
+def save_json(d, path):
+  with open(path, 'w', encoding='utf-8') as f:
+    json.dump(d, f, ensure_ascii=False, indent=2)
+
+
+def load_json(path):
+  with open(path, 'r', encoding='utf-8') as f:
+    return json.load(f)

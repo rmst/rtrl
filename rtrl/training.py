@@ -6,7 +6,6 @@ import pandas as pd
 import rtrl.sac
 from pandas import DataFrame, Timestamp
 
-from rtrl.lazyload import LazyLoad
 from rtrl.testing import Test
 from rtrl.util import pandas_dict, cached_property
 from rtrl.wrappers import StatsWrapper
@@ -14,7 +13,7 @@ from rtrl.envs import GymEnv
 
 
 @dataclass
-class Training(LazyLoad):
+class Training:
   Env: type = GymEnv
   Test: type = Test
   Agent: type = rtrl.sac.Agent
@@ -23,8 +22,8 @@ class Training(LazyLoad):
   seed: int = 0
   epochs: int = 50
 
-  # we use lazy_property because we don't want to save the following properties to file
-  env = cached_property(lambda self: StatsWrapper(self.Env(seed_val=self.seed + self.epoch), window=self.steps*self.rounds))
+  # we use cached_property because we don't want to save these attributes to file
+  env = cached_property(lambda self: StatsWrapper(self.Env(seed_val=self.seed + self.epoch), window=self.steps))
   last_transition = cached_property(lambda self: (None, 0., True, dict(reset=True)))
 
   def __post_init__(self):
@@ -32,8 +31,6 @@ class Training(LazyLoad):
     # print("Environment:", self.env)
     # noinspection PyArgumentList
     self.agent = self.Agent(self.env.observation_space, self.env.action_space)
-
-    self.stats = DataFrame()
     self.time = pd.Timedelta(0)
 
   def run_epoch(self):
@@ -72,5 +69,5 @@ class Training(LazyLoad):
 
       print(stats[-1].add_prefix("  ").to_string(), '\n')
 
-    self.stats = self.stats.append(stats, ignore_index=True, sort=True)  # concat with stats from previous episodes
     self.epoch += 1
+    return stats
