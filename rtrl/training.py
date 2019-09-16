@@ -24,7 +24,7 @@ class Training(LazyLoad):
   epochs: int = 50
 
   # we use lazy_property because we don't want to save the following properties to file
-  env = cached_property(lambda self: StatsWrapper(self.Env(seed_val=self.seed + self.epoch), window=self.steps))
+  env = cached_property(lambda self: StatsWrapper(self.Env(seed_val=self.seed + self.epoch), window=self.steps*self.rounds))
   last_transition = cached_property(lambda self: (None, 0., True, dict(reset=True)))
 
   def __post_init__(self):
@@ -37,11 +37,11 @@ class Training(LazyLoad):
     self.time = pd.Timedelta(0)
 
   def run_epoch(self):
-    t0 = pd.Timestamp.utcnow()
     stats = []
 
     for rnd in range(self.rounds):
       print(f"=== epoch {self.epoch}/{self.epochs} ".ljust(20, '=') + f" round {rnd}/{self.rounds} ".ljust(50, '='))
+      t0 = pd.Timestamp.utcnow()
       stats_training = []
 
       # test runs in parallel to the training process
@@ -66,9 +66,9 @@ class Training(LazyLoad):
 
       self.time += Timestamp.utcnow() - t0
       stats += pandas_dict(**self.env.stats(),
+                           time=self.time, round_time=Timestamp.utcnow() - t0,
                            **test.stats().add_prefix("test_"),
-                           **DataFrame(stats_training).mean(skipna=True),
-                           time=self.time, round_time=Timestamp.utcnow() - t0),  # appending to stats
+                           **DataFrame(stats_training).mean(skipna=True)),  # appending to stats
 
       print(stats[-1].add_prefix("  ").to_string(), '\n')
 

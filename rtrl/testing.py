@@ -15,7 +15,7 @@ class Test:
   base_seed: int
   steps: int
 
-  number: int = 4
+  number: int = 1
   workers: int = 1
 
   def __post_init__(self):

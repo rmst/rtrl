@@ -78,6 +78,7 @@ def make_and_run(spec_path: str, run_path: str):
 
 def test_spec_make_run():
   path = mkdtemp()
+  # os.environ.update(LD_LIBRARY_PATH=os.environ.get("LD_LIBRARY_PATH", "") + ":" + os.environ["HOME"] + "/.mujoco/mujoco200/bin")
   print("="*70 + "\n")
   print("Running in:", path)
   print("")
