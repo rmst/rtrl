@@ -17,7 +17,7 @@ class MlpActionValue(Sequential):
 
   # noinspection PyMethodOverriding
   def forward(self, obs, action):
-    x = torch.cat((obs['vector'], action['value']), 1)
+    x = torch.cat((obs, action), 1)
     return super().forward(x)
 
 
@@ -30,7 +30,7 @@ class MlpValue(Sequential):
     )
 
   def forward(self, obs):
-    return super().forward(obs['vector'])
+    return super().forward(obs)
 
 
 class MlpPolicy(Sequential):
@@ -42,10 +42,10 @@ class MlpPolicy(Sequential):
     )
 
   def forward(self, obs):
-    return super().forward(obs['vector'])
+    return super().forward(obs)
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(unsafe_hash=True)  # necessary because Pytorch uses some the hash for some caching mechanisms
 class Mlp(Module):
   observation_space: InitVar
   action_space: InitVar
@@ -57,8 +57,8 @@ class Mlp(Module):
 
   def __post_init__(self, observation_space, action_space):
     super().__init__()
-    dim_obs = observation_space.spaces['vector'].shape[0]
-    dim_action = action_space.spaces['value'].shape[0]
+    dim_obs = observation_space.shape[0]
+    dim_action = action_space.shape[0]
     self.critics = ModuleList(MlpActionValue(dim_obs, dim_action, self.hidden_units) for _ in range(self.num_critics))
     self.value = MlpValue(dim_obs, dim_action, self.hidden_units)
     self.actor = MlpPolicy(dim_obs, dim_action, self.hidden_units)
@@ -74,6 +74,9 @@ class Mlp(Module):
       action_col = action_distribution.sample()
     action, = partition(action_col)
     return action, {}
+
+
+
 
 
 # class MlpRT(nn.Module):

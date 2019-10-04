@@ -16,24 +16,40 @@ import torch
 import rtrl.models
 import gym.spaces
 import pandas as pd
-from rtrl.specs import *
 
 from rtrl.util import partial, partial_to_dict, partial_from_dict, dump, load, save_json, load_json
 
 import yaml
 
 
-def exec_cmd(_, cmd, *args):
-  """A simple command line interface
-  Usage: exec_cmd(*sys.argv), see __main__.py"""
-  if cmd == "spec":
-    spec(eval(args[0]), args[1])
-  elif cmd == "init":
-    init(*args)
-  elif cmd == "run":
-    run(*args)
-  elif cmd == "init_and_run":
-    init_and_run(*args)
+# === specifications ===================================================================================================
+MjTest = partial(
+  Training,
+  epochs=3,
+  rounds=5,
+  steps=10,
+  Agent=partial(memory_size=1000000),
+  Env=partial(id="Pendulum-v0"),
+)
+
+SimpleTraining = partial(
+  Training,
+  epochs=50,
+  rounds=20,
+  steps=1000,
+  Agent=partial(memory_size=1000000),
+  Env=partial(id="Pendulum-v0"),
+)
+
+MjTraining = partial(
+  Training,
+  epochs=50,
+  rounds=20,
+  steps=1000,
+  Agent=partial(memory_size=1000000, batchsize=256, start_training=10000),
+  Env=partial(id='Walker2d-v2'),
+)
+# ======================================================================================================================
 
 
 def spec(run_cls: type, spec_path):
@@ -75,21 +91,19 @@ def init_and_run(spec_path: str, run_path: str):
   run(run_path)
 
 
-# === tests ============================================================================================================
-
-def test_spec_init_run():
+def spec_init_run(conf: type, run_path: str = None):
   path = mkdtemp()
-  # os.environ.update(LD_LIBRARY_PATH=os.environ.get("LD_LIBRARY_PATH", "") + ":" + os.environ["HOME"] + "/.mujoco/mujoco200/bin")
   print("="*70 + "\n")
   print("Running in:", path)
   print("")
   try:
-    init_and_run(spec(Training, path+"/spec.json"), path)
+    init_and_run(spec(conf, path+"/spec.json"), path)
     # make_and_run(spec(MjTraining, join(path, "spec.json")), join(path, "state"))
   finally:
     import shutil
     shutil.rmtree(path)
 
 
+# === tests ============================================================================================================
 if __name__ == "__main__":
-  test_spec_init_run()
+  spec_init_run(SimpleTraining)

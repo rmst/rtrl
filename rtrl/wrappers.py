@@ -4,6 +4,22 @@ import gym
 import numpy as np
 
 
+class RealTimeWrapper(gym.Wrapper):
+  def __init__(self, env):
+    super().__init__(env)
+    self.observation_space = gym.spaces.Tuple((env.observation_space, env.action_space))
+    self.previous_action = self.initial_action = env.action_space.sample()
+
+  def reset(self):
+    self.previous_action = self.initial_action
+    return super().reset(), self.previous_action
+
+  def step(self, action):
+    observation, reward, done, info = super().step(self.previous_action)
+    self.previous_action = action
+    return (observation, self.previous_action), reward, done, info
+
+
 class StatsWrapper(gym.Wrapper):
   """Compute running statistics (return, number of episodes, etc.) over a certain time window."""
 

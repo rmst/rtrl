@@ -1,9 +1,7 @@
 from dataclasses import dataclass, InitVar
-
 import gym
 
-from rtrl.wrappers import Float64ToFloat32, TimeLimitResetWrapper, DictObservationWrapper, NormalizeActionWrapper, \
-  DictActionWrapper
+from rtrl.wrappers import Float64ToFloat32, TimeLimitResetWrapper, NormalizeActionWrapper
 
 
 @dataclass
@@ -15,9 +13,11 @@ class GymEnv(gym.Wrapper):
     env = gym.make(self.id)
     env = Float64ToFloat32(env)
     env = TimeLimitResetWrapper(env)
-    env = DictObservationWrapper(env)
+    # env = DictObservationWrapper(env)
     assert isinstance(env.action_space, gym.spaces.Box)
     env = NormalizeActionWrapper(env)
-    env = DictActionWrapper(env)
+    # env = DictActionWrapper(env)
     super().__init__(env)
     self.seed(seed_val)
+
+

@@ -86,21 +86,23 @@ class TanhNormal(Distribution):
     super().__init__(self.normal.batch_shape, self.normal.event_shape)
 
   def log_prob(self, x):
-    assert isinstance(x, dict)
-    assert x["value"].dim() == 2 and x["pre_tanh_value"].dim() == 2
-    return self.normal.log_prob(x["pre_tanh_value"]) - torch.log(
-      1 - x["value"] * x["value"] + self.epsilon
+    assert hasattr(x, "pre_tanh_value")
+    assert x.dim() == 2 and x.pre_tanh_value.dim() == 2
+    return self.normal.log_prob(x.pre_tanh_value) - torch.log(
+      1 - x * x + self.epsilon
     )
 
   def sample(self, sample_shape=torch.Size()):
     z = self.normal.sample(sample_shape)
     out = torch.tanh(z)
-    return dict(value=out, pre_tanh_value=z)
+    out.pre_tanh_value = z
+    return out
 
   def rsample(self, sample_shape=torch.Size()):
     z = self.normal.rsample(sample_shape)
     out = torch.tanh(z)
-    return dict(value=out, pre_tanh_value=z)
+    out.pre_tanh_value = z
+    return out
 
 
 # noinspection PyAbstractClass
