@@ -26,8 +26,8 @@ class Agent:
 
   batchsize: int = 256  # training batch size
   memory_size: int = 1000000  # replay memory size
-  lr_actor: float = 0.003
-  lr: float = 0.003
+  lr_actor: float = 0.0003
+  lr: float = 0.0003
   discount: float = 0.99
   polyak: float = 0.995  # = 1 - 0.005
   policy_freq: int = 1
