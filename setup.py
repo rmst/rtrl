@@ -28,7 +28,9 @@ setup(name='rtrl',
       extras_require={
 
       },
-      scripts=[],
+      scripts=[
+            "scripts/rtrl-continue"
+      ],
       packages=find_packages())
 
 

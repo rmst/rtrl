@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-
-pushd /app/rtrl
-  git pull
-  git reset --hard ${1}
-  pip install -e .
-popd

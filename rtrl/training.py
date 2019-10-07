@@ -61,11 +61,12 @@ class Training:
 
         self.last_transition = self.env.step(action)
 
-      self.time += Timestamp.utcnow() - t0
       stats += pandas_dict(**self.env.stats(),
                            time=self.time, round_time=Timestamp.utcnow() - t0,
                            **test.stats().add_prefix("test_"),
                            **DataFrame(stats_training).mean(skipna=True)),  # appending to stats
+
+      self.time += Timestamp.utcnow() - t0
 
       print(stats[-1].add_prefix("  ").to_string(), '\n')
 

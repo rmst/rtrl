@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 
-source ../utilrc.sh
+set -e  # exit on error
+set -u  # raise error if variables undefined
+
+master-rev(){
+  git ls-remote $1 HEAD | head -n 1 | awk '{ print $1}'
+}
 
 MLAGENTS_REV=$(master-rev git@github.com:rmst/ml-agents-frozen.git)
 AVENUE_REV=${2-$(master-rev git@github.com:ElementAI/Avenue.git)}

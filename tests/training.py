@@ -2,9 +2,10 @@ from dataclasses import dataclass, InitVar
 
 import gym
 import numpy as np
+import torch
 
 from rtrl.models import Mlp
-from rtrl.run import *
+from rtrl import *
 
 
 class TestMlp(Mlp):

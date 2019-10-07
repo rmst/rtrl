@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -e # exit in case somethings fails
+# set -x
+
+for EXPID in "$@"; do
+  EXP=${EXPERIMENTS-"$(pwd)"}/$EXPID
+  python -m rtrl init_and_run "$EXP/spec.json" "$EXP" &>> "$EXP/output.txt" &
+  echo training process writing to "$EXP/output.txt"
+done
+
+for EXPID in "$@"; do wait -n; done
+echo all processes exited successfully

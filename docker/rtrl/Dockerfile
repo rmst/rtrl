@@ -13,6 +13,3 @@ RUN --mount=type=ssh git clone git@github.com:rmst/rtrl.git /app/rtrl \
   && cd /app/rtrl \
   && git reset --hard $RTRL_REV \
   && pip --no-cache-dir install -e .
-
-COPY bin /app/bin
-ENV PATH=$PATH:/app/bin
