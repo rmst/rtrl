@@ -5,7 +5,7 @@ set -e # exit in case somethings fails
 
 for EXPID in "$@"; do
   EXP=${EXPERIMENTS-"$(pwd)"}/$EXPID
-  python -m rtrl init_and_run "$EXP/spec.json" "$EXP" &>> "$EXP/output.txt" &
+  python -m rtrl run "$EXP" &>> "$EXP/output.txt" &
   echo training process writing to "$EXP/output.txt"
 done
 

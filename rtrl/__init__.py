@@ -43,7 +43,6 @@ def spec(run_cls: type, spec_path):
   """Create a spec json file from a subclass of Training or a partial (reconfigured class). See `specs.py` for examples."""
   run_cls = partial(run_cls)
   save_json(partial_to_dict(run_cls), spec_path)
-  return spec_path
 
 
 def init(spec_path, path):
@@ -56,26 +55,26 @@ def init(spec_path, path):
   dump(pd.DataFrame(), path+"/stats")
 
 
-def run(path: str):
-  """Load a Training instance and continue running it until the final epoch."""
+def resume(path: str):
+  """Load a Training instance and resume running it until the final epoch."""
   while True:
     time.sleep(1)  # on network file systems writing files is asynchronous and we need to wait for sync
     run_instance: Training = load(path+"/state")
     stats = run_instance.run_epoch()
-    dump(load(path+'/stats').append(stats, ignore_index=True), path+"/stats")  # concat with stats from previous episodes
+    dump(load(path+"/stats").append(stats, ignore_index=True), path+"/stats")  # concat with stats from previous episodes
     dump(run_instance, path+"/state")
     print("")
     if run_instance.epoch == run_instance.epochs:
       break
 
 
-def init_and_run(spec_path: str, run_path: str):
-  if not exists(run_path+'/state'):
-    init(spec_path, run_path)
+def run(path: str):
+  if not exists(path+'/state'):
+    init(path+'/spec.json', path)
     print("")
   else:
-    print("\n\n\n\n" + "Continuing to run..." + "\n\n")
-  run(run_path)
+    print("\n\n\n\n" + "Resuming..." + "\n\n")
+  resume(path)
 
 
 def spec_init_run(conf: type, run_path: str = None):
@@ -84,8 +83,8 @@ def spec_init_run(conf: type, run_path: str = None):
   print("Running in:", path)
   print("")
   try:
-    init_and_run(spec(conf, path+"/spec.json"), path)
-    # make_and_run(spec(MjTraining, join(path, "spec.json")), join(path, "state"))
+    spec(conf, path + "/spec.json")
+    run(path)
   finally:
     import shutil
     shutil.rmtree(path)

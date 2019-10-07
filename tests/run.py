@@ -1,5 +1,5 @@
 """
-Test for scripts/rtrl-continue
+Test for scripts/rtrl-run
 """
 
 import sys
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     mkdir(path + "/e1")
     spec(SimpleTraining, path + "/e1/spec.json")
     try:
-      callx(["rtrl-continue", 'e1'])
+      callx(["rtrl-run", 'e1'])
     finally:
       callx(["ls", path])
       callx(["ls", path + "/e1"])
