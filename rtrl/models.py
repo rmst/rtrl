@@ -1,5 +1,6 @@
 from dataclasses import InitVar, dataclass
 
+import gym
 import torch
 from rtrl.memory import collate, partition
 from torch.nn import Linear, Sequential, ReLU, ModuleList, Module
@@ -45,7 +46,7 @@ class MlpPolicy(Sequential):
     return super().forward(obs)
 
 
-@dataclass(unsafe_hash=True)  # necessary because Pytorch uses some the hash for some caching mechanisms
+@dataclass(unsafe_hash=True)  # necessary because Pytorch uses the hash for some caching mechanisms
 class Mlp(Module):
   observation_space: InitVar
   action_space: InitVar
@@ -84,38 +85,61 @@ class TestMlp(Mlp):
 # ======================================================================================================================
 
 
-# class MlpRT(nn.Module):
-#   class HL(Mlp.HL):
-#     class L(RlkitHiddenLinear): pass
-#
-#   class LCL(agents.nn.Linear):
-#     pass
-#
-#   class LPL(TanhNormalLayer): pass
-#
-#   hidden_units: int = 256
-#   num_critics: int = 1
-#
-#   def __init__(self, ob_space, a_space, **kwargs):
-#     super().__init__()
-#
-#     apply_kwargs(self, kwargs)
-#     s = STATE({k: v.shape for k, v in ob_space.spaces.items()})
-#     self.dim_obs = s.s[0] + (s.a[0] if s.a is not None else 0)
-#     self.a_space = a_space
-#
-#     self.net = nn.Sequential(self.HL(self.dim_obs, self.hidden_units),
-#                              self.HL(self.hidden_units, self.hidden_units))
-#
-#     self.critic = self.LCL(self.hidden_units, self.num_critics)
-#     self.actor = self.LPL(self.hidden_units, self.a_space.shape[0])
-#     self.v_out = (self.critic,)
-#
-#   def forward(self, x):
-#     h = self.net(x.s)
-#     v = self.critic(h)
-#     a = self.actor(h)
-#     return (a, None), tuple(v[:, i:i + 1] for i in range(self.num_critics))
+@dataclass(unsafe_hash=True)  # necessary because Pytorch uses the hash for some caching mechanisms
+class MlpRT(Module):
+  observation_space: InitVar
+  action_space: InitVar
+  hidden_units: int = 256
+  # num_critics: int = 1
+
+  def __post_init__(self, observation_space, action_space):
+    super().__init__()
+    assert isinstance(observation_space, gym.spaces.Tuple)
+    input_dim = sum(s.shape[0] for s in observation_space)
+    self.net = Sequential(Linear(input_dim, self.hidden_units), ReLU(),
+                          Linear(self.hidden_units, self.hidden_units), ReLU())
+
+    self.critic = Linear(self.hidden_units, 1)
+    self.actor = TanhNormalLayer(self.hidden_units, action_space.shape[0])
+    self.v_out = (self.critic,)
+
+  def forward(self, x):
+    assert isinstance(x, tuple)
+    x = torch.cat(x, dim=1)
+    h = self.net(x)
+    v = self.critic(h)
+    action_distribution = self.actor(h)
+    return action_distribution, (v,)
+
+
+@dataclass(unsafe_hash=True)  # necessary because Pytorch uses the hash for some caching mechanisms
+class MlpRTDouble(torch.nn.Module):
+  observation_space: InitVar
+  action_space: InitVar
+  hidden_units: int = 256
+
+  def __post_init__(self, observation_space, action_space):
+    super().__init__()
+    self.a = MlpRT(observation_space, action_space, hidden_units=self.hidden_units)
+    self.b = MlpRT(observation_space, action_space, hidden_units=self.hidden_units)
+    self.v_out = self.a.v_out + self.b.v_out
+
+  def forward(self, x):
+    action_distribution, (v0,) = self.a(x)
+    _, (v1,) = self.b(x)
+    return action_distribution, (v0, v1)
+
+  def to(self, device):
+    self.device = device
+    return super().to(device=device)
+
+  def act(self, obs, r, done, info):
+    obs_col = collate((obs,), device=self.device)
+    with torch.no_grad():
+      action_distribution, _ = self.a(obs_col)
+      action_col = action_distribution.sample()
+    action, = partition(action_col)
+    return action, {}
 #
 #
 # class SeparateRT(nn.Module):
@@ -153,22 +177,7 @@ class TestMlp(Mlp):
 #     return (a, None), tuple(v[:, i:i + 1] for i in range(self.num_critics))
 #
 #
-# class MlpRTDouble(torch.nn.Module):
-#   class M(MlpRT): pass
-#
-#   hidden_units: int = 256
-#
-#   def __init__(self, ob_space, a_space, **kwargs):
-#     super().__init__()
-#     apply_kwargs(self, kwargs)
-#     self.a = self.M(ob_space, a_space, hidden_units=self.hidden_units)
-#     self.b = self.M(ob_space, a_space, hidden_units=self.hidden_units)
-#     self.v_out = self.a.v_out + self.b.v_out
-#
-#   def forward(self, x):
-#     a0, v0 = self.a(x)
-#     a1, v1 = self.b(x)
-#     return (a0[0], a1[0]), (v0[0], v1[0])
+
 #
 #
 #

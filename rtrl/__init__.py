@@ -1,3 +1,5 @@
+import os
+import tempfile
 import time
 from os.path import exists
 from tempfile import mkdtemp
@@ -9,7 +11,58 @@ from rtrl.training import Training
 from rtrl.util import partial, save_json, partial_to_dict, partial_from_dict, load_json, dump, load
 
 
+def iterate_episodes(run_cls: type = Training, checkpoint_path: str = None):
+  """Generator [1] yielding episode statistics (pd.DataFrame) while running and checkpointing
+  - run_cls: can by any callable that outputs an appropriate run object (e.g. has a 'run_epoch' method)
+
+  [1] https://docs.python.org/3/howto/functional.html#generators
+  """
+  checkpoint_path = checkpoint_path or tempfile.mktemp("_remove_on_exit")
+
+  try:
+    if not exists(checkpoint_path):
+      print("=== specification ".ljust(70, "="))
+      print(yaml.dump(partial_to_dict(run_cls), indent=3, default_flow_style=False, sort_keys=False), end="")
+      run_instance = run_cls()
+      dump(run_instance, checkpoint_path)
+      print("")
+
+    while True:
+      time.sleep(1)  # on network file systems writing files is asynchronous and we need to wait for sync
+      run_instance = load(checkpoint_path)
+      yield run_instance.run_epoch()  # yield stats data frame (this makes this function a generator)
+      print("")
+      dump(run_instance, checkpoint_path)
+      if run_instance.epoch == run_instance.epochs:
+        break
+  finally:
+    if checkpoint_path.endswith("_remove_on_exit") and exists(checkpoint_path):
+      os.remove(checkpoint_path)
+
+
+def run(run_cls: type = Training, checkpoint_path: str = None):
+  list(iterate_episodes(run_cls, checkpoint_path))
+
+
+def run_wandb(run_cls: type, checkpoint_path: str, entity, project, run_id):
+  """run and save config and stats to https://wandb.com"""
+  import wandb
+  wandb.init(entity=entity, project=project, resume=run_id, config=partial_to_dict(run_cls))
+  for stats in iterate_episodes(run_cls, checkpoint_path):
+    [wandb.log(dict(s)) for _, s in stats.T.items()]
+
+
+def run_fs(run_cls: type, path: str):
+  """run and save config and stats to `path` (with pickle)"""
+  save_json(partial_to_dict(run_cls), path+'/spec.json')
+  if not exists(path+'/stats'):
+    dump(pd.DataFrame(), path+'/stats')
+  for stats in iterate_episodes(run_cls, path + '/state'):
+    dump(load(path+'/stats').append(stats, ignore_index=True), path+'/stats')  # concat with stats from previous episodes
+
+
 # === specifications ===================================================================================================
+
 MjTest = partial(
   Training,
   epochs=3,
@@ -36,62 +89,8 @@ MjTraining = partial(
   Agent=partial(memory_size=1000000, batchsize=256, start_training=10000),
   Env=partial(id='Walker2d-v2'),
 )
-# ======================================================================================================================
-
-
-def spec(run_cls: type, spec_path):
-  """Create a spec json file from a subclass of Training or a partial (reconfigured class). See `specs.py` for examples."""
-  run_cls = partial(run_cls)
-  save_json(partial_to_dict(run_cls), spec_path)
-
-
-def init(spec_path, path):
-  """Create a Training instance from a spec json file"""
-  run_cls = partial_from_dict(load_json(spec_path))
-  print("=== specification ".ljust(70, "="))
-  print(yaml.dump(partial_to_dict(run_cls), indent=3, default_flow_style=False, sort_keys=False), end="")
-  run_instance: Training = run_cls()
-  dump(run_instance, path+'/state')
-  dump(pd.DataFrame(), path+"/stats")
-
-
-def resume(path: str):
-  """Load a Training instance and resume running it until the final epoch."""
-  while True:
-    time.sleep(1)  # on network file systems writing files is asynchronous and we need to wait for sync
-    run_instance: Training = load(path+"/state")
-    stats = run_instance.run_epoch()
-    dump(load(path+"/stats").append(stats, ignore_index=True), path+"/stats")  # concat with stats from previous episodes
-    dump(run_instance, path+"/state")
-    print("")
-    if run_instance.epoch == run_instance.epochs:
-      break
-
-
-def run(path: str):
-  if not exists(path+'/state'):
-    init(path+'/spec.json', path)
-    print("")
-  else:
-    print("\n\n\n\n" + "Resuming..." + "\n\n")
-  resume(path)
-
-
-def spec_init_run(conf: type, run_path: str = None):
-  path = mkdtemp()
-  print("="*70 + "\n")
-  print("Running in:", path)
-  print("")
-  try:
-    spec(conf, path + "/spec.json")
-    run(path)
-  finally:
-    import shutil
-    shutil.rmtree(path)
-
-  from rtrl import SimpleTraining, spec_init_run
 
 
 # === tests ============================================================================================================
 if __name__ == "__main__":
-  spec_init_run(SimpleTraining)
+  run(SimpleTraining)

@@ -8,7 +8,7 @@ from os.path import dirname
 from shutil import rmtree
 from subprocess import check_call
 from tempfile import mkdtemp
-from rtrl import SimpleTraining, spec
+from rtrl import SimpleTraining, spec, save_json
 
 ROOT = dirname(dirname(__file__))
 
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     environ["EXPERIMENTS"] = path
     environ["PATH"] = dirname(sys.executable) + ":" + environ["PATH"]
     mkdir(path + "/e1")
-    spec(SimpleTraining, path + "/e1/spec.json")
+    save_json(spec(SimpleTraining), path + "/e1/spec.json")
     try:
       callx(["rtrl-run", 'e1'])
     finally:

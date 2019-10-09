@@ -17,7 +17,6 @@ class Training:
   Env: type = GymEnv
   Test: type = Test
   Agent: type = rtrl.sac.Agent
-  Logger: type = rtrl.logging.WandbLogger
   steps: int = 100  # number of steps per round
   rounds: int = 5  # number of rounds per epoch
   seed: int = 0

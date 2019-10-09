@@ -2,17 +2,16 @@
 
 import sys
 
-from rtrl import spec, init, resume, run
+from rtrl import *
 
-_, cmd, *args = sys.argv
+_, cmd, conf, *args = sys.argv
+run_cls = partial_from_dict(yaml.safe_load(conf))
 
-if cmd == "spec":
-  spec(eval(args[0]), args[1])
-elif cmd == "init":
-  init(*args)
-elif cmd == "resume":
-  resume(*args)
-elif cmd == "run":
-  run(*args)
+if cmd == "run":
+  run(run_cls, *args)
+elif cmd == "run_fs":
+  run_fs(run_cls, *args)
+elif cmd == "run_wandb":
+  run_wandb(run_cls, *args)
 else:
   raise AttributeError("Undefined command: " + cmd)

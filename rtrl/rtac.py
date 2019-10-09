@@ -1,87 +1,55 @@
-"""
-This doesn't work yet. It is just a copy of what was in the old repo.
+from copy import deepcopy
+from dataclasses import dataclass
 
-"""
+import torch
+from agents.nn import polyak
+from torch.nn.functional import mse_loss
 
-import rtrl
+import rtrl.sac
+from rtrl import partial, Training, run
+from rtrl.memory import SimpleMemory
+from rtrl.nn import no_grad, copy_shared
+import rtrl.models
 
 
+@dataclass
 class Agent(rtrl.sac.Agent):
-  Model = rtrl.models.MlpRTDouble
+  Model: type = rtrl.models.MlpRTDouble
 
-  rec_dim: int = 0
-  # v_loss: float = 100.
-
-  def actor(self, x, train=False):
-    # x = gyn.wrappers.ToPytorch(x)
-    x = gyn.wrappers.SelectActionComponent(x, key="a")
-    x = gyn.wrappers.Transpose(x, device=self.device)
-    x = ActionSlice(x, dim=self.rec_dim)
-    x = ActionDelay(x, device=self.device)
-    x = gyn.wrappers.TransitionBuffer(x, keep_reset_transitions=self.keep_reset_transitions)
-    x = self.A(x, self, train=train)
-    return x
-
-  # noinspection PyMissingConstructor
-  def __init__(self, obsp, acsp, rec_dim=None, **kwargs):
-    apply_kwargs(self, kwargs)
-
-    if rec_dim is not None: self.rec_dim = rec_dim
-    acsp = deepcopy(acsp)
-    acsp.shape = (acsp.shape[0] + self.rec_dim, )
-
-    obsp = deepcopy(obsp)
-    obsp.spaces["s"].shape = (obsp.spaces["s"].shape[0] + acsp.shape[0],)
-
-    model = self.M(obsp, acsp)
+  def __post_init__(self, obsp, acsp):
+    model = self.Model(obsp, acsp)
     self.model = model.to(self.device)
-    self.model_target: self.M = no_grad(deepcopy(self.model))
+    self.model_target = no_grad(deepcopy(self.model))
     # polyak(self.model_target, self.model, 0)  # ensure they have equal parameter values
+    self.model_nograd = no_grad(copy_shared(self.model))
 
-    self.model_nograd: self.M = no_grad(copy_shared(self.model))
-    self.model_eval: self.M = no_grad(copy_shared(self.model))
-    self.model_eval.train(False)
-
-    self.opt = optim.Adam(self.model.parameters(), lr=self.lr)
+    self.opt = torch.optim.Adam(self.model.parameters(), lr=self.lr)
     self.memory = SimpleMemory(self.memory_size, self.batchsize, self.device)
 
     self.num_updates = 0
     self.is_training = False
 
-    self.outnorm = self.OutputNorm(1, device=self.device)
-    self.outnorm_target = self.OutputNorm(1, device=self.device)
+    self.outnorm = self.OutputNorm(1).to(self.device)
+    self.outnorm_target = self.OutputNorm(1).to(self.device)
 
-    # ienv = gyn.Interface(obsp, acsp, self.batchsize)
-    # self.ienv_train =
-
-  def train_single(self):
+  def train(self):
     stats = {}
 
     # indices = np.random.randint(0, len(self.memory)-1, self.batchsize)
-    obs, actions, rewards, next_obs, terminals, rm_stats = self.memory.sample()
-    obs: STATE; next_obs: STATE
+    obs, actions, rewards, next_obs, terminals = self.memory.sample()
     rewards, terminals = rewards[:, None], terminals[:, None]  # expand for correct broadcasting below
 
-    stats.update(rm_stats)
-
-    (policy_outputs, _), v_preds = self.model(obs)
+    action_distribution, v_preds = self.model(obs)
     # assert isinstance(policy_outputs.base_dist, (TanhNormal, agents.sac.models.ConcatDirac))
-    new_actions = policy_outputs.rsample()
-    log_pi = policy_outputs.log_prob(new_actions)[:, None]
+    new_actions = action_distribution.rsample()
+    log_pi = action_distribution.log_prob(new_actions)[:, None]
     # policy_mean = policy_outputs.base_dist.normal_mean
     # policy_log_std = torch.log(policy_outputs.base_dist.normal_std)
     assert log_pi.dim() == 2 and log_pi.shape[1] == 1, "use Independent(Normal(...), 1) instead of Normal(...)"
 
     # no alpha loss / adaptive entropy scaling
-
-    # QF Loss
-    # (pt, _), _ = self.model_target(obs)
-    # new_actions_tgt = pt.sample()
-    new_actions_tgt = struct(a=new_actions.a.detach()) if self.target_action_detach else struct(a=new_actions.a)
-
-    new_next_obs = struct(next_obs, s=torch.cat((next_obs.s[:, :-actions.a.shape[1]], new_actions.a), 1))
-    # new_next_obs_no_grad = struct(s=new_next_obs.s.detach())
-    new_next_obs_tgt = struct(next_obs, s=torch.cat((next_obs.s[:, :-actions.a.shape[1]], new_actions_tgt.a), 1))
+    new_next_obs = (next_obs[0], new_actions)
+    new_next_obs_tgt = (next_obs[0], new_actions.detach())
     _, v2s_target = self.model_target(new_next_obs_tgt)
     _, v2s = self.model_nograd(new_next_obs)
 
@@ -100,7 +68,7 @@ class Agent(rtrl.sac.Agent):
     [self.outnorm.update_lin(x) for x in self.model.v_out]
 
     # assert not v_target.requires_grad
-    v_loss = sum(fu.mse_loss(v_pred, v_target) for v_pred in v_preds)
+    v_loss = sum(mse_loss(v_pred, v_target) for v_pred in v_preds)
     # v_loss = fu.mse_loss(v_pred, v_target)
 
     # Policy Loss (with reparameterization)
@@ -126,4 +94,16 @@ class Agent(rtrl.sac.Agent):
     self.num_updates += 1
 
     stats.update(memory_size=len(self.memory), updates=self.num_updates, entropy_scale=self.entropy_scale)
-    return ensure_detached(stats)
+    return stats
+
+
+if __name__ == "__main__":
+  Rtac_Test = partial(
+    Training,
+    epochs=3,
+    rounds=5,
+    steps=10,
+    Agent=partial(Agent, memory_size=1000000),
+    Env=partial(id="Pendulum-v0", real_time=True),
+  )
+  run(Rtac_Test)
