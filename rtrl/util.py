@@ -53,7 +53,7 @@ def default():
 
 def partial(func: Type[T] = default, *args, **kwargs) -> Union[T, Type[T]]:
   """Like `functools.partial`, except if used as a keyword argument for another `partial` and no function is supplied.
-   Then, the outer `partial` will insert the appropriate default value as the function. E.g. see `specs.py`. """
+   Then, the outer `partial` will insert the appropriate default value as the function. """
 
   for k, v in kwargs.items():
     if isinstance(v, functools.partial) and v.func is default:

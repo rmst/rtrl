@@ -29,7 +29,7 @@ setup(name='rtrl',
 
       },
       scripts=[
-            "scripts/rtrl-run"
+            "scripts/rtrl-parallel"
       ],
       packages=find_packages())
 

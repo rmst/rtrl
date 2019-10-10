@@ -1,4 +1,7 @@
+import atexit
+import json
 import os
+import shutil
 import tempfile
 import time
 from os.path import exists
@@ -7,12 +10,13 @@ from tempfile import mkdtemp
 import pandas as pd
 import yaml
 
-from rtrl.training import Training
 from rtrl.util import partial, save_json, partial_to_dict, partial_from_dict, load_json, dump, load
+from rtrl.training import Training
+from rtrl.rtac import Agent as RtacAgent
 
 
 def iterate_episodes(run_cls: type = Training, checkpoint_path: str = None):
-  """Generator [1] yielding episode statistics (pd.DataFrame) while running and checkpointing
+  """Generator [1] yielding episode statistics (list of pd.Series) while running and checkpointing
   - run_cls: can by any callable that outputs an appropriate run object (e.g. has a 'run_epoch' method)
 
   [1] https://docs.python.org/3/howto/functional.html#generators
@@ -26,6 +30,8 @@ def iterate_episodes(run_cls: type = Training, checkpoint_path: str = None):
       run_instance = run_cls()
       dump(run_instance, checkpoint_path)
       print("")
+    else:
+      print("\ncontinuing...\n")
 
     while True:
       time.sleep(1)  # on network file systems writing files is asynchronous and we need to wait for sync
@@ -40,19 +46,30 @@ def iterate_episodes(run_cls: type = Training, checkpoint_path: str = None):
       os.remove(checkpoint_path)
 
 
+def log_environment_variables():
+  """add certain relevant environment variables to our config
+  usage: `LOG_VARIABLES='HOME JOBID' python ...`
+  """
+  return {k: os.environ.get(k, '') for k in os.environ.get('LOG_VARIABLES', '').strip().split()}
+
+
 def run(run_cls: type = Training, checkpoint_path: str = None):
   list(iterate_episodes(run_cls, checkpoint_path))
 
 
-def run_wandb(run_cls: type, checkpoint_path: str, entity, project, run_id):
+def run_wandb(entity, project, run_id, run_cls: type = Training, checkpoint_path: str = None):
   """run and save config and stats to https://wandb.com"""
+  wandb_dir = mkdtemp()  # prevent wandb from polluting the home directory
+  atexit.register(shutil.rmtree, wandb_dir, ignore_errors=True)  # clean up after wandb atexit handler finishes
   import wandb
-  wandb.init(entity=entity, project=project, resume=run_id, config=partial_to_dict(run_cls))
+  config = partial_to_dict(run_cls)
+  config['environ'] = log_environment_variables()
+  wandb.init(dir=wandb_dir, entity=entity, project=project, id=run_id, resume=run_id, config=config)
   for stats in iterate_episodes(run_cls, checkpoint_path):
-    [wandb.log(dict(s)) for _, s in stats.T.items()]
+    [wandb.log(json.loads(s.to_json())) for s in stats]
 
 
-def run_fs(run_cls: type, path: str):
+def run_fs(path: str, run_cls: type = Training):
   """run and save config and stats to `path` (with pickle)"""
   save_json(partial_to_dict(run_cls), path+'/spec.json')
   if not exists(path+'/stats'):
@@ -74,22 +91,21 @@ MjTest = partial(
 
 SimpleTraining = partial(
   Training,
-  epochs=50,
-  rounds=20,
-  steps=1000,
   Agent=partial(memory_size=1000000),
   Env=partial(id="Pendulum-v0"),
 )
 
 MjTraining = partial(
   Training,
-  epochs=50,
-  rounds=20,
-  steps=1000,
   Agent=partial(memory_size=1000000, batchsize=256, start_training=10000),
   Env=partial(id='Walker2d-v2'),
 )
 
+RtacTraining = partial(
+  Training,
+  Agent=partial(RtacAgent, memory_size=1000000),
+  Env=partial(id="Pendulum-v0", real_time=True),
+)
 
 # === tests ============================================================================================================
 if __name__ == "__main__":

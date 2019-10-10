@@ -1,5 +1,5 @@
 """
-Test for scripts/rtrl-run
+Test for scripts/rtrl-parallel
 """
 
 import sys
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     mkdir(path + "/e1")
     save_json(spec(SimpleTraining), path + "/e1/spec.json")
     try:
-      callx(["rtrl-run", 'e1'])
+      callx(["rtrl-parallel", 'e1'])
     finally:
       callx(["ls", path])
       callx(["ls", path + "/e1"])

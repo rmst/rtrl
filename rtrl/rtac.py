@@ -6,7 +6,6 @@ from agents.nn import polyak
 from torch.nn.functional import mse_loss
 
 import rtrl.sac
-from rtrl import partial, Training, run
 from rtrl.memory import SimpleMemory
 from rtrl.nn import no_grad, copy_shared
 import rtrl.models
@@ -15,6 +14,7 @@ import rtrl.models
 @dataclass
 class Agent(rtrl.sac.Agent):
   Model: type = rtrl.models.MlpRTDouble
+  loss_alpha: float = 0.001
 
   def __post_init__(self, obsp, acsp):
     model = self.Model(obsp, acsp)
@@ -98,6 +98,8 @@ class Agent(rtrl.sac.Agent):
 
 
 if __name__ == "__main__":
+  from rtrl import partial, Training, run
+
   Rtac_Test = partial(
     Training,
     epochs=3,
