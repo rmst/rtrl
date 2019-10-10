@@ -2,7 +2,6 @@ from copy import deepcopy
 from dataclasses import dataclass
 
 import torch
-from agents.nn import polyak
 from torch.nn.functional import mse_loss
 
 import rtrl.sac
@@ -87,7 +86,9 @@ class Agent(rtrl.sac.Agent):
     stats.update(loss_actor=policy_loss.detach())
 
     if self.num_updates % self.target_freq == 0:
-      polyak(self.model_target, self.model, self.polyak)
+      with torch.no_grad():
+        for t, n in zip(self.model_target.parameters(), self.model.parameters()):
+          t.data += (1 - self.polyak) * (n - t)  # equivalent to t = α * t + (1-α) * n
       self.outnorm_target.m1 = self.polyak * self.outnorm_target.m1 + (1-self.polyak) * self.outnorm.m1
       self.outnorm_target.std = self.polyak * self.outnorm_target.std + (1 - self.polyak) * self.outnorm.std
 
