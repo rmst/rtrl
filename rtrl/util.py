@@ -61,7 +61,10 @@ def partial(func: Type[T] = default, *args, **kwargs) -> Union[T, Type[T]]:
   return functools.partial(func, *args, **kwargs)
 
 
-def partial_to_dict(p: functools.partial, version="2"):
+FKEY = '+'
+
+
+def partial_to_dict(p: functools.partial, version="3"):
   assert not p.args, "So far only keyword arguments are supported, here"
   fields = {k: v.default for k, v in inspect.signature(p.func).parameters.items()}
   fields = {k: v for k, v in fields.items() if v is not inspect.Parameter.empty}
@@ -70,16 +73,15 @@ def partial_to_dict(p: functools.partial, version="2"):
   fields.update(p.keywords)
   nested = {k: partial_to_dict(partial(v), version="") for k, v in fields.items() if callable(v)}
   simple = {k: v for k, v in fields.items() if k not in nested}
-  output = {"type": p.func.__module__ + ":" + p.func.__qualname__, **simple, **nested}
+  output = {FKEY: p.func.__module__ + ":" + p.func.__qualname__, **simple, **nested}
   return dict(output, __format_version__=version) if version else output
 
 
 def partial_from_dict(d: dict):
   d = d.copy()
-  assert d.pop("__format_version__", "2") == "2"
-  d = {k: partial_from_dict(v) if isinstance(v, dict) and "type" in v else v for k, v in d.items()}
-  d["type"] = "rtrl.util:default" if d["type"] == "..." else d["type"]
-  module, name = d.pop("type").split(":")
+  assert d.pop("__format_version__", "3") == "3"
+  d = {k: partial_from_dict(v) if isinstance(v, dict) and FKEY in v else v for k, v in d.items()}
+  module, name = (d.pop(FKEY) or "rtrl.util:default").split(":")
   func = getattr(import_module(module), name)
   return partial(func, **d)
 

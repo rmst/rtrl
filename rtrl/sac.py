@@ -26,16 +26,13 @@ class Agent:
 
   batchsize: int = 256  # training batch size
   memory_size: int = 1000000  # replay memory size
-  lr_actor: float = 0.0003
   lr: float = 0.0003
   discount: float = 0.99
   polyak: float = 0.995  # = 1 - 0.005
-  policy_freq: int = 1
-  target_freq: int = 1
   keep_reset_transitions: int = 0
   reward_scale: float = 5.
   entropy_scale: float = 1.
-  start_training: int = 256
+  start_training: int = 10000  # 1000
 
   device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
@@ -46,7 +43,7 @@ class Agent:
     self.model: Agent.Model = model.to(self.device)
     self.model_target: Agent.Model = no_grad(deepcopy(self.model))
 
-    self.policy_optimizer = optim.Adam(self.model.actor.parameters(), lr=self.lr_actor)
+    self.policy_optimizer = optim.Adam(self.model.actor.parameters(), lr=self.lr)
     self.critic_optimizer = optim.Adam(chain(self.model.value.parameters(), *(c.parameters() for c in self.model.critics)), lr=self.lr)
     self.memory = SimpleMemory(self.memory_size, self.batchsize, self.device)
 
@@ -121,12 +118,25 @@ class Agent:
 
     stats.update(loss_actor=policy_loss.detach())
 
-    if self.num_updates % self.target_freq == 0:
-      with torch.no_grad():
-        for t, n in zip(self.model_target.parameters(), self.model.parameters()):
-          t.data += (1 - self.polyak) * (n - t)  # equivalent to t = α * t + (1-α) * n
-      self.outnorm_target.m1 = self.polyak * self.outnorm_target.m1 + (1-self.polyak) * self.outnorm.m1
-      self.outnorm_target.std = self.polyak * self.outnorm_target.std + (1 - self.polyak) * self.outnorm.std
+    with torch.no_grad():
+      for t, n in zip(self.model_target.parameters(), self.model.parameters()):
+        t.data += (1 - self.polyak) * (n - t)  # equivalent to t = α * t + (1-α) * n
+    self.outnorm_target.m1 = self.polyak * self.outnorm_target.m1 + (1-self.polyak) * self.outnorm.m1
+    self.outnorm_target.std = self.polyak * self.outnorm_target.std + (1 - self.polyak) * self.outnorm.std
 
     self.num_updates += 1
     return dict(stats, memory_size=len(self.memory), updates=self.num_updates)
+
+
+if __name__ == "__main__":
+  from rtrl import partial, Training, run
+
+  Sac_Test = partial(
+    Training,
+    epochs=3,
+    rounds=5,
+    steps=100,
+    Agent=partial(Agent, memory_size=1000000, start_training=256),
+    Env=partial(id="Pendulum-v0"),
+  )
+  run(Sac_Test)

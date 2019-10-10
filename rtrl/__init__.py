@@ -5,6 +5,7 @@ import shutil
 import tempfile
 import time
 from os.path import exists
+from random import randrange
 from tempfile import mkdtemp
 
 import pandas as pd
@@ -63,6 +64,8 @@ def run_wandb(entity, project, run_id, run_cls: type = Training, checkpoint_path
   atexit.register(shutil.rmtree, wandb_dir, ignore_errors=True)  # clean up after wandb atexit handler finishes
   import wandb
   config = partial_to_dict(run_cls)
+  if config.get('seed', -1) == 0:
+    config['seed'] = randrange(1000000)
   config['environ'] = log_environment_variables()
   resume = checkpoint_path and exists(checkpoint_path)
   wandb.init(dir=wandb_dir, entity=entity, project=project, id=run_id, resume=resume, config=config)
