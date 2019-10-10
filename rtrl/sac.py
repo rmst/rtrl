@@ -18,9 +18,8 @@ import numpy as np
 
 @dataclass
 class Agent:
-  obsp: InitVar
-  acsp: InitVar
-
+  observation_space: InitVar
+  action_space: InitVar
   Model: type = rtrl.models.Mlp
   OutputNorm: type = PopArt
 
@@ -38,8 +37,8 @@ class Agent:
 
   model_nograd = cached_property(lambda self: no_grad(copy_shared(self.model)))
 
-  def __post_init__(self, obsp, acsp):
-    model = self.Model(obsp, acsp)
+  def __post_init__(self, observation_space, action_space):
+    model = self.Model(observation_space, action_space)
     self.model: Agent.Model = model.to(self.device)
     self.model_target: Agent.Model = no_grad(deepcopy(self.model))
 

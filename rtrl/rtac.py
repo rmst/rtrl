@@ -15,8 +15,8 @@ class Agent(rtrl.sac.Agent):
   Model: type = rtrl.models.MlpRTDouble
   loss_alpha: float = 0.001
 
-  def __post_init__(self, obsp, acsp):
-    model = self.Model(obsp, acsp)
+  def __post_init__(self, observation_space, action_space):
+    model = self.Model(observation_space, action_space)
     self.model = model.to(self.device)
     self.model_target = no_grad(deepcopy(self.model))
     # polyak(self.model_target, self.model, 0)  # ensure they have equal parameter values
@@ -85,12 +85,11 @@ class Agent(rtrl.sac.Agent):
     stats.update(loss_value=v_loss.detach())
     stats.update(loss_actor=policy_loss.detach())
 
-    if self.num_updates % self.target_freq == 0:
-      with torch.no_grad():
-        for t, n in zip(self.model_target.parameters(), self.model.parameters()):
-          t.data += (1 - self.polyak) * (n - t)  # equivalent to t = α * t + (1-α) * n
-      self.outnorm_target.m1 = self.polyak * self.outnorm_target.m1 + (1-self.polyak) * self.outnorm.m1
-      self.outnorm_target.std = self.polyak * self.outnorm_target.std + (1 - self.polyak) * self.outnorm.std
+    with torch.no_grad():
+      for t, n in zip(self.model_target.parameters(), self.model.parameters()):
+        t.data += (1 - self.polyak) * (n - t)  # equivalent to t = α * t + (1-α) * n
+    self.outnorm_target.m1 = self.polyak * self.outnorm_target.m1 + (1-self.polyak) * self.outnorm.m1
+    self.outnorm_target.std = self.polyak * self.outnorm_target.std + (1 - self.polyak) * self.outnorm.std
 
     self.num_updates += 1
 
@@ -105,8 +104,8 @@ if __name__ == "__main__":
     Training,
     epochs=3,
     rounds=5,
-    steps=10,
-    Agent=partial(Agent, memory_size=1000000),
+    steps=100,
+    Agent=partial(Agent, memory_size=1000000, start_training=256),
     Env=partial(id="Pendulum-v0", real_time=True),
   )
   run(Rtac_Test)
