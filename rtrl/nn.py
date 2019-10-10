@@ -126,7 +126,7 @@ class TanhNormalLayer(nn.Module):
   def forward(self, x):
     mean = self.lin_mean(x)
     log_std = self.lin_std(x)
-    log_std = torch.clamp(log_std, 2, -20)
+    log_std = torch.clamp(log_std, -20, 2)
     std = torch.exp(log_std)
     # a = TanhTransformedDist(Independent(Normal(m, std), 1))
     a = Independent(TanhNormal(mean, std), 1)
