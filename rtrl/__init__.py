@@ -64,7 +64,8 @@ def run_wandb(entity, project, run_id, run_cls: type = Training, checkpoint_path
   import wandb
   config = partial_to_dict(run_cls)
   config['environ'] = log_environment_variables()
-  wandb.init(dir=wandb_dir, entity=entity, project=project, id=run_id, resume=run_id, config=config)
+  resume = checkpoint_path and exists(checkpoint_path)
+  wandb.init(dir=wandb_dir, entity=entity, project=project, id=run_id, resume=resume, config=config)
   for stats in iterate_episodes(run_cls, checkpoint_path):
     [wandb.log(json.loads(s.to_json())) for s in stats]
 
