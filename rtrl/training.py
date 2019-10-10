@@ -63,7 +63,7 @@ class Training:
 
       stats += pandas_dict(**self.env.stats(),
                            time=self.time, round_time=Timestamp.utcnow() - t0,
-                           **test.stats().add_prefix("test_"),
+                           **test.stats().add_suffix("_test"),
                            **DataFrame(stats_training).mean(skipna=True)),  # appending to stats
 
       self.time += Timestamp.utcnow() - t0
