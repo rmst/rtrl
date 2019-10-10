@@ -13,3 +13,6 @@ RUN --mount=type=ssh git clone git@github.com:rmst/rtrl.git /app/rtrl \
   && cd /app/rtrl \
   && git reset --hard $RTRL_REV \
   && pip --no-cache-dir install -e .
+
+# optional wandb installation
+RUN pip --no-cache-dir install wandb
