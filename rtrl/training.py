@@ -12,7 +12,7 @@ from rtrl.wrappers import StatsWrapper
 from rtrl.envs import GymEnv
 
 
-@dataclass
+@dataclass(eq=0)
 class Training:
   Env: type = GymEnv
   Test: type = Test
@@ -31,7 +31,6 @@ class Training:
     # print("Environment:", self.env)
     # noinspection PyArgumentList
     self.agent = self.Agent(self.env.observation_space, self.env.action_space)
-    self.time = pd.Timedelta(0)
 
   def run_epoch(self):
     stats = []
@@ -62,11 +61,10 @@ class Training:
         self.last_transition = self.env.step(action)
 
       stats += pandas_dict(**self.env.stats(),
-                           time=self.time, round_time=Timestamp.utcnow() - t0,
-                           **test.stats().add_suffix("_test"),
+                           round_time=Timestamp.utcnow() - t0,
+                           **test.stats().add_suffix("_test"),  # this blocks until the tests have finished
+                           round_time_total=Timestamp.utcnow() - t0,
                            **DataFrame(stats_training).mean(skipna=True)),  # appending to stats
-
-      self.time += Timestamp.utcnow() - t0
 
       print(stats[-1].add_prefix("  ").to_string(), '\n')
 

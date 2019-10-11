@@ -16,7 +16,7 @@ from rtrl.util import shallow_copy, cached_property
 import numpy as np
 
 
-@dataclass
+@dataclass(eq=0)
 class Agent:
   observation_space: InitVar
   action_space: InitVar
@@ -32,12 +32,12 @@ class Agent:
   reward_scale: float = 5.
   entropy_scale: float = 1.
   start_training: int = 10000  # 1000
-
-  device = "cuda:0" if torch.cuda.is_available() else "cpu"
+  device: str = "cuda"
 
   model_nograd = cached_property(lambda self: no_grad(copy_shared(self.model)))
 
   def __post_init__(self, observation_space, action_space):
+    self.device = self.device if "cuda" in self.device and torch.cuda.is_available() else "cpu"
     model = self.Model(observation_space, action_space)
     self.model: Agent.Model = model.to(self.device)
     self.model_target: Agent.Model = no_grad(deepcopy(self.model))

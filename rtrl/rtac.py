@@ -10,7 +10,7 @@ from rtrl.nn import no_grad, copy_shared
 import rtrl.models
 
 
-@dataclass
+@dataclass(eq=0)
 class Agent(rtrl.sac.Agent):
   Model: type = rtrl.models.MlpRTDouble
   loss_alpha: float = 0.001

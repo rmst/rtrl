@@ -54,7 +54,7 @@ class Mlp(Module):
   hidden_units: int = 256
   num_critics: int = 2
 
-  device: str = 'cpu'
+  device = 'cpu'
 
   def __post_init__(self, observation_space, action_space):
     super().__init__()
@@ -85,12 +85,15 @@ class TestMlp(Mlp):
 # ======================================================================================================================
 
 
-@dataclass(unsafe_hash=True)  # necessary because Pytorch uses the hash for some caching mechanisms
+@dataclass(eq=0)
 class MlpRT(Module):
   observation_space: InitVar
   action_space: InitVar
   hidden_units: int = 256
   # num_critics: int = 1
+  #
+  # def __hash__(self):
+  #   return id(self)
 
   def __post_init__(self, observation_space, action_space):
     super().__init__()
@@ -112,7 +115,7 @@ class MlpRT(Module):
     return action_distribution, (v,)
 
 
-@dataclass(unsafe_hash=True)  # necessary because Pytorch uses the hash for some caching mechanisms
+@dataclass(eq=0)
 class MlpRTDouble(torch.nn.Module):
   observation_space: InitVar
   action_space: InitVar
