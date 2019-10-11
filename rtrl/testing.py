@@ -8,7 +8,7 @@ from rtrl.util import shallow_copy, pandas_dict
 from rtrl.wrappers import StatsWrapper
 
 
-@dataclass
+@dataclass(eq=0)
 class Test:
   Env: type
   actor: object

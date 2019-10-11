@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# usage: ./build <image-name>
+
+
 set -e  # exit on error
 set -u  # raise error if variables undefined
 

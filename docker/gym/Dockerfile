@@ -52,7 +52,7 @@ RUN git clone https://github.com/openai/gym \
 # we need to change the permissions of mujoco_py/generated because mujoco-py will fail if it can't modifiy this directory
 RUN printf "\
 try: import mujoco_py, os \n\
-except: exit \n\
+except: exit() \n\
 p = os.path.join(os.path.dirname(mujoco_py.__file__), 'generated') \n\
 print(p) \n\
 os.chmod(p, 0o777) \n" | python

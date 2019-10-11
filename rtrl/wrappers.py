@@ -17,7 +17,7 @@ class RealTimeWrapper(gym.Wrapper):
   def step(self, action):
     observation, reward, done, info = super().step(self.previous_action)
     self.previous_action = action
-    return (observation, self.previous_action), reward, done, info
+    return (observation, action), reward, done, info
 
 
 class StatsWrapper(gym.Wrapper):
@@ -67,6 +67,15 @@ class DictObservationWrapper(gym.ObservationWrapper):
 
   def observation(self, observation):
     return {self.key: observation}
+
+
+class TupleObservationWrapper(gym.ObservationWrapper):
+  def __init__(self, env):
+    super().__init__(env)
+    self.observation_space = gym.spaces.Tuple((env.observation_space,))
+
+  def observation(self, observation):
+    return observation,
 
 
 class DictActionWrapper(gym.Wrapper):

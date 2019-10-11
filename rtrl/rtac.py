@@ -78,10 +78,10 @@ class Agent(rtrl.sac.Agent):
     # Update Networks
     self.opt.zero_grad()
     # alpha = self.v_loss / (self.v_loss + 1)
-    total_loss = self.loss_alpha * policy_loss + (1-self.loss_alpha) * v_loss
-    total_loss.backward()
+    loss_total = self.loss_alpha * policy_loss + (1-self.loss_alpha) * v_loss
+    loss_total.backward()
     self.opt.step()
-    stats.update(total_loss=total_loss.detach())
+    stats.update(loss_total=loss_total.detach())
     stats.update(loss_value=v_loss.detach())
     stats.update(loss_actor=policy_loss.detach())
 

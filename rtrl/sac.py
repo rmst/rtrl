@@ -31,13 +31,13 @@ class Agent:
   keep_reset_transitions: int = 0
   reward_scale: float = 5.
   entropy_scale: float = 1.
-  start_training: int = 10000  # 1000
-  device: str = "cuda"
+  start_training: int = 1000
+  device: str = None
 
   model_nograd = cached_property(lambda self: no_grad(copy_shared(self.model)))
 
   def __post_init__(self, observation_space, action_space):
-    self.device = self.device if "cuda" in self.device and torch.cuda.is_available() else "cpu"
+    self.device = self.device or ("cuda" if torch.cuda.is_available() else "cpu")
     model = self.Model(observation_space, action_space)
     self.model: Agent.Model = model.to(self.device)
     self.model_target: Agent.Model = no_grad(deepcopy(self.model))
@@ -70,10 +70,10 @@ class Agent:
 
     v_pred = self.model.value(obs)
 
-    policy_outputs = self.model.actor(obs)  # should include logprob
-    assert isinstance(policy_outputs.base_dist, rtrl.nn.TanhNormal)
-    new_actions = policy_outputs.rsample()
-    log_pi = policy_outputs.log_prob(new_actions)[:, None]
+    action_distribution = self.model.actor(obs)  # should include logprob
+    assert isinstance(action_distribution.base_dist, rtrl.nn.TanhNormal)
+    new_actions = action_distribution.rsample()
+    log_pi = action_distribution.log_prob(new_actions)[:, None]
     assert log_pi.dim() == 2 and log_pi.shape[1] == 1, "use Independent(Normal(...), 1) instead of Normal(...)"
 
     # QF Loss
@@ -127,7 +127,8 @@ class Agent:
     return dict(stats, memory_size=len(self.memory), updates=self.num_updates)
 
 
-if __name__ == "__main__":
+# === tests ============================================================================================================
+def test_agent():
   from rtrl import partial, Training, run
 
   Sac_Test = partial(
@@ -135,7 +136,26 @@ if __name__ == "__main__":
     epochs=3,
     rounds=5,
     steps=100,
-    Agent=partial(Agent, memory_size=1000000, start_training=256),
+    Agent=partial(Agent, memory_size=1000000, start_training=256, batchsize=4),
     Env=partial(id="Pendulum-v0"),
   )
   run(Sac_Test)
+
+
+def test_agent_realtime():
+  from rtrl import partial, Training, run
+
+  Sac_Test = partial(
+    Training,
+    epochs=3,
+    rounds=5,
+    steps=100,
+    Agent=partial(Agent, memory_size=1000000, start_training=256, batchsize=4),
+    Env=partial(id="Pendulum-v0", real_time=1),
+  )
+  run(Sac_Test)
+
+
+if __name__ == "__main__":
+  # test_agent()
+  test_agent_realtime()

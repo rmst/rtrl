@@ -8,13 +8,13 @@ WORKDIR /app
 
 ENV GIT_SSH_COMMAND 'ssh -o "StrictHostKeyChecking no"'
 
-ARG MLAGENTS_REV
-RUN --mount=type=ssh git clone git@github.com:rmst/ml-agents-frozen.git ml-agents \
-  && cd ml-agents \
-  && git reset --hard $MLAGENTS_REV \
-  && pip --no-cache-dir install Pillow \
-  && pip --no-cache-dir install -e ./ml-agents \
-  && pip --no-cache-dir install -e ./gym-unity
+#ARG MLAGENTS_REV
+#RUN --mount=type=ssh git clone git@github.com:rmst/ml-agents-frozen.git ml-agents \
+#  && cd ml-agents \
+#  && git reset --hard $MLAGENTS_REV \
+#  && pip --no-cache-dir install Pillow \
+#  && pip --no-cache-dir install -e ./ml-agents \
+#  && pip --no-cache-dir install -e ./gym-unity
 
 ARG AVENUE_REV
 RUN --mount=type=ssh git clone git@github.com:ElementAI/Avenue.git avenue \
@@ -25,6 +25,5 @@ RUN --mount=type=ssh git clone git@github.com:ElementAI/Avenue.git avenue \
 # download Avenue assets
 RUN mkdir /app/avenue_assets
 ENV AVENUE_ASSETS /app/avenue_assets
-# we need to ignore errors in the following command. TODO: provide manual download function
-RUN python -c 'import avenue; avenue.make("LaneFollowingDev")'; exit 0
+RUN python -c 'import avenue; avenue.download("AvenueCar")'
 RUN chmod 777 -R /app/avenue_assets

@@ -3,6 +3,7 @@ import inspect
 import io
 import json
 import pickle
+import subprocess
 import weakref
 from dataclasses import is_dataclass, dataclass, make_dataclass, fields, Field
 from importlib import import_module
@@ -116,3 +117,35 @@ def save_json(d, path):
 def load_json(path):
   with open(path, 'r', encoding='utf-8') as f:
     return json.load(f)
+
+
+# === git ==============================================================================================================
+def get_output(*args, default='', **kwargs):
+  try:
+    output = subprocess.check_output(*args, universal_newlines=True, **kwargs)
+    return output.rstrip("\n")  # skip trailing newlines as done in bash
+  except subprocess.CalledProcessError:
+    return default
+
+
+def git_info(path):
+  """returns a dict with information about the git repo at path (path can be a sub-directory of the git repo)
+  usage:
+    import __main__
+    info = git_info(os.path.dirname(__main__.__file__)
+  """
+  rev = get_output('git rev-parse HEAD'.split(), cwd=path)
+  count = int(get_output('git rev-list HEAD --count'.split(), cwd=path))
+  status = get_output('git status --short'.split(), cwd=path)  # shows uncommited modified files
+  commit_date = get_output("git show --quiet --date=format-local:%Y-%m-%dT%H:%M:%SZ --format=%cd".split(), cwd=path, env=dict(TZ='UTC'))
+  desc = get_output(['git', 'describe', '--long', '--tags', '--dirty', '--always', '--match', r'v[0-9]*\.[0-9]*'], cwd=path)
+  message = desc + " " + ' '.join(get_output(['git', 'log', '--oneline', '--format=%B', '-n', '1', "HEAD"], cwd=path).splitlines())
+
+  url = get_output('git config --get remote.origin.url'.split(), cwd=path).strip()
+  # if on github, change remote to a meaningful https url
+  if url.startswith('git@github.com:'):
+    remote = 'https://github.com/' + url[len('git@github.com:'):-len('.git')] + '/commit/' + rev
+  elif url.startswith('https://github.com'):
+    url = url[:len('.git')] + '/commit/' + rev
+
+  return dict(url=url, rev=rev, count=count, status=status, desc=desc, date=commit_date, message=message)

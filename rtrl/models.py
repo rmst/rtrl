@@ -3,9 +3,10 @@ from dataclasses import InitVar, dataclass
 import gym
 import torch
 from rtrl.memory import collate, partition
-from torch.nn import Linear, Sequential, ReLU, ModuleList, Module
+from torch.nn import Linear, Sequential, ReLU, ModuleList, Module, LeakyReLU, Conv2d
 from rtrl.nn import TanhNormalLayer
 from rtrl.util import cached_property
+from torch.nn.functional import leaky_relu
 
 
 class MlpActionValue(Sequential):
@@ -18,7 +19,7 @@ class MlpActionValue(Sequential):
 
   # noinspection PyMethodOverriding
   def forward(self, obs, action):
-    x = torch.cat((obs, action), 1)
+    x = torch.cat((*obs, action), 1)
     return super().forward(x)
 
 
@@ -31,7 +32,7 @@ class MlpValue(Sequential):
     )
 
   def forward(self, obs):
-    return super().forward(obs)
+    return super().forward(torch.cat(obs, -1))
 
 
 class MlpPolicy(Sequential):
@@ -43,10 +44,10 @@ class MlpPolicy(Sequential):
     )
 
   def forward(self, obs):
-    return super().forward(obs)
+    return super().forward(torch.cat(obs, 1))
 
 
-@dataclass(unsafe_hash=True)  # necessary because Pytorch uses the hash for some caching mechanisms
+@dataclass(eq=0)
 class Mlp(Module):
   observation_space: InitVar
   action_space: InitVar
@@ -58,7 +59,8 @@ class Mlp(Module):
 
   def __post_init__(self, observation_space, action_space):
     super().__init__()
-    dim_obs = observation_space.shape[0]
+    assert isinstance(observation_space, gym.spaces.Tuple)
+    dim_obs = sum(space.shape[0] for space in observation_space)
     dim_action = action_space.shape[0]
     self.critics = ModuleList(MlpActionValue(dim_obs, dim_action, self.hidden_units) for _ in range(self.num_critics))
     self.value = MlpValue(dim_obs, dim_action, self.hidden_units)
@@ -99,8 +101,10 @@ class MlpRT(Module):
     super().__init__()
     assert isinstance(observation_space, gym.spaces.Tuple)
     input_dim = sum(s.shape[0] for s in observation_space)
-    self.net = Sequential(Linear(input_dim, self.hidden_units), ReLU(),
-                          Linear(self.hidden_units, self.hidden_units), ReLU())
+    self.net = Sequential(
+      Linear(input_dim, self.hidden_units), ReLU(),
+      Linear(self.hidden_units, self.hidden_units), ReLU()
+    )
 
     self.critic = Linear(self.hidden_units, 1)
     self.actor = TanhNormalLayer(self.hidden_units, action_space.shape[0])
@@ -143,6 +147,53 @@ class MlpRTDouble(torch.nn.Module):
       action_col = action_distribution.sample()
     action, = partition(action_col)
     return action, {}
+
+
+@dataclass(eq=0)
+class ConvRTAC(Module):
+  observation_space: InitVar
+  action_space: InitVar
+  hidden_units: int = 256
+
+  num_critics: int = 1
+
+  def __post_init__(self, observation_space, action_space):
+    super().__init__()
+    assert isinstance(observation_space, gym.spaces.Tuple)
+    (img_sp, vec_sp), ac_sp = observation_space
+
+    self.conv = big_conv(img_sp.shape[0])
+
+    with torch.no_grad():
+      conv_size = self.conv(torch.zeros((1, *img_sp.shape))).view(1, -1).size(1)
+
+    self.lin1 = Linear(conv_size + vec_sp.shape[0] + ac_sp.shape[0], self.hidden_units)
+    # self.lin2 = nn.Linear(hidden_units, a_space.shape[0])
+
+    assert self.num_critics == 1
+    self.critic = Linear(self.hidden_units, 1)
+    self.actor = TanhNormalLayer(self.hidden_units, action_space.shape[0])
+    self.v_out = (self.critic,)
+
+  def forward(self, inp):
+    (x, vec), action = inp
+    x = x.type(torch.float32)
+    x = x / 255 - 0.5
+    x = self.conv(x)
+    x = x.view(x.size(0), -1)
+    h = leaky_relu(self.lin1(torch.cat((x, vec, action), -1)))
+    v = self.critic(h)
+    action_distribution = self.actor(h)
+    return action_distribution, (v,)
+
+
+def big_conv(n):
+  return Sequential(
+    Conv2d(n, 32, 8, stride=2), LeakyReLU(),
+    Conv2d(32, 32, 4, stride=2), LeakyReLU(),
+    Conv2d(32, 32, 4, stride=2), LeakyReLU(),
+    Conv2d(32, 32, 4, stride=1), LeakyReLU(),
+  )
 #
 #
 # class SeparateRT(nn.Module):
@@ -196,47 +247,12 @@ class MlpRTDouble(torch.nn.Module):
 #       nn.ReLU()
 #     )
 #
-# def big_conv(n):
-#   return nn.Sequential(
-#     nn.Conv2d(n, 32, 8, stride=2), nn.LeakyReLU(),
-#     nn.Conv2d(32, 32, 4, stride=2), nn.LeakyReLU(),
-#     nn.Conv2d(32, 32, 4, stride=2), nn.LeakyReLU(),
-#     nn.Conv2d(32, 32, 4, stride=1), nn.LeakyReLU(),
-#   )
-#
-# class ConvRTAC(nn.Module):
-#   class LCL(agents.nn.Linear):
-#     pass
-#
-#   class LPL(TanhNormalLayer): pass
-#
-#   num_critics = 1
-#
-#   def __init__(self, ob_space, a_space, hidden_units):
-#     super().__init__()
-#     s = STATE({k: v.shape for k, v in ob_space.spaces.items()})
-#     self.a_space = a_space
-#
-#     self.conv = big_conv(s.vis[0])
-#     with torch.no_grad():
-#       conv_size = self.conv(torch.zeros((1, *s.vis))).view(1, -1).size(1)
-#
-#     self.lin1 = nn.Linear(conv_size + s.s[0], hidden_units)
-#     # self.lin2 = nn.Linear(hidden_units, a_space.shape[0])
-#
-#     self.critic = self.LCL(hidden_units, self.num_critics)
-#     self.actor = self.LPL(hidden_units, self.a_space.shape[0])
-#     self.v_out = (self.critic,)
-#
-#   def forward(self, inp):
-#     x = inp.vis.type(torch.float32)
-#     x = x / 255 - 0.5
-#     x = self.conv(x)
-#     x = x.view(x.size(0), -1)
-#     h = fu.leaky_relu(self.lin1(torch.cat((x, inp.s), -1)))
-#     v = self.critic(h)
-#     a = self.actor(h)
-#     return (a, None), tuple(v[:, i:i + 1] for i in range(self.num_critics))
+
+
+
+
+
+
 #
 #
 # class ConvActor(nn.Module):

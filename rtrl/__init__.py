@@ -11,7 +11,7 @@ from tempfile import mkdtemp
 import pandas as pd
 import yaml
 
-from rtrl.util import partial, save_json, partial_to_dict, partial_from_dict, load_json, dump, load
+from rtrl.util import partial, save_json, partial_to_dict, partial_from_dict, load_json, dump, load, git_info
 from rtrl.training import Training
 from rtrl.rtac import Agent as RtacAgent
 
@@ -64,9 +64,9 @@ def run_wandb(entity, project, run_id, run_cls: type = Training, checkpoint_path
   atexit.register(shutil.rmtree, wandb_dir, ignore_errors=True)  # clean up after wandb atexit handler finishes
   import wandb
   config = partial_to_dict(run_cls)
-  if config.get('seed', -1) == 0:
-    config['seed'] = randrange(1000000)
+  config['seed'] = config['seed'] or randrange(1, 1000000)  # if seed == 0 replace with random
   config['environ'] = log_environment_variables()
+  config['git'] = git_info()
   resume = checkpoint_path and exists(checkpoint_path)
   wandb.init(dir=wandb_dir, entity=entity, project=project, id=run_id, resume=resume, config=config)
   for stats in iterate_episodes(run_cls, checkpoint_path):
