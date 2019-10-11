@@ -13,7 +13,7 @@ import rtrl.models
 @dataclass(eq=0)
 class Agent(rtrl.sac.Agent):
   Model: type = rtrl.models.MlpRTDouble
-  loss_alpha: float = 0.001
+  loss_alpha: float = 0.2
 
   def __post_init__(self, observation_space, action_space):
     model = self.Model(observation_space, action_space)
