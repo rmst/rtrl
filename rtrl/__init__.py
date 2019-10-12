@@ -101,7 +101,7 @@ SimpleTraining = partial(
 
 MjTraining = partial(
   Training,
-  Agent=partial(memory_size=1000000, batchsize=256, start_training=10000),
+  Agent=partial(memory_size=1000000),
   Env=partial(id='Walker2d-v2'),
 )
 

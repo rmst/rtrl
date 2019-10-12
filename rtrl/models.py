@@ -7,6 +7,16 @@ from torch.nn import Linear, Sequential, ReLU, ModuleList, Module, LeakyReLU, Co
 from rtrl.nn import TanhNormalLayer
 from rtrl.util import cached_property
 from torch.nn.functional import leaky_relu
+import numpy as np
+
+
+class RlkitLinear(Linear):
+  def __init__(self, *args):
+    super().__init__(*args)
+    fan_in = self.weight.shape[0]
+    bound = 1. / np.sqrt(fan_in)
+    self.weight.data.uniform_(-bound, bound)
+    self.bias.data.fill_(0.1)
 
 
 class MlpActionValue(Sequential):
@@ -102,8 +112,8 @@ class MlpRT(Module):
     assert isinstance(observation_space, gym.spaces.Tuple)
     input_dim = sum(s.shape[0] for s in observation_space)
     self.net = Sequential(
-      Linear(input_dim, self.hidden_units), ReLU(),
-      Linear(self.hidden_units, self.hidden_units), ReLU()
+      RlkitLinear(input_dim, self.hidden_units), ReLU(),
+      RlkitLinear(self.hidden_units, self.hidden_units), ReLU()
     )
 
     self.critic = Linear(self.hidden_units, 1)

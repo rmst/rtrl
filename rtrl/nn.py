@@ -24,7 +24,7 @@ def copy_shared(model_a):
   return model_b
 
 
-@dataclass
+@dataclass(eq=0)
 class PopArt:
   """PopArt https://arxiv.org/pdf/1809.04474.pdf"""
   dim: InitVar[int] = 1
