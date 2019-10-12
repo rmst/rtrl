@@ -20,7 +20,6 @@ class Agent(rtrl.sac.Agent):
     self.model = model.to(self.device)
     self.model_target = no_grad(deepcopy(self.model))
     # polyak(self.model_target, self.model, 0)  # ensure they have equal parameter values
-    self.model_nograd = no_grad(copy_shared(self.model))
 
     self.opt = torch.optim.Adam(self.model.parameters(), lr=self.lr)
     self.memory = SimpleMemory(self.memory_size, self.batchsize, self.device)
