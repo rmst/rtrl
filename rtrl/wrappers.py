@@ -8,7 +8,9 @@ class RealTimeWrapper(gym.Wrapper):
   def __init__(self, env):
     super().__init__(env)
     self.observation_space = gym.spaces.Tuple((env.observation_space, env.action_space))
-    self.previous_action = self.initial_action = env.action_space.sample()
+    # self.initial_action = env.action_space.sample()
+    assert isinstance(env.action_space, gym.spaces.Box)
+    self.initial_action = env.action_space.high * 0
 
   def reset(self):
     self.previous_action = self.initial_action
