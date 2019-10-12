@@ -2,6 +2,7 @@ import functools
 import inspect
 import io
 import json
+import os
 import pickle
 import subprocess
 import weakref
@@ -128,12 +129,11 @@ def get_output(*args, default='', **kwargs):
     return default
 
 
-def git_info(path):
+def git_info(path=None):
   """returns a dict with information about the git repo at path (path can be a sub-directory of the git repo)
-  usage:
-    import __main__
-    info = git_info(os.path.dirname(__main__.__file__)
   """
+  import __main__
+  path = path or os.path.dirname(__main__.__file__)
   rev = get_output('git rev-parse HEAD'.split(), cwd=path)
   count = int(get_output('git rev-list HEAD --count'.split(), cwd=path))
   status = get_output('git status --short'.split(), cwd=path)  # shows uncommited modified files
