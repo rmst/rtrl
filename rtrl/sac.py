@@ -55,14 +55,14 @@ class Agent:
     self.outnorm_target = self.OutputNorm(dim=1).to(self.device)
 
   def act(self, obs, r, done, info, train=False):
-    stats = {}
+    stats = []
     action, _ = self.model.act(obs, r, done, info)
 
     if train:
       self.memory.append(np.float32(r), np.float32(done), info, obs, action)
       if len(self.memory) >= self.start_training and self.training_steps % self.training_divisor == 0:
         for _ in range(self.training_iterations):
-          stats.update(self.train())
+          stats += self.train(),
 
       self.training_steps += 1
     return action, stats

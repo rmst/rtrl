@@ -55,8 +55,8 @@ class Training:
         if done:
           obs = self.env.reset()
 
-        action, __ = self.agent.act(obs, r, done, info, train=True)
-        stats_training.append(__)
+        action, training_stats = self.agent.act(obs, r, done, info, train=True)
+        stats_training += training_stats
 
         self.last_transition = self.env.step(action)
 
