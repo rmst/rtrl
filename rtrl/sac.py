@@ -39,6 +39,8 @@ class Agent:
   training_iterations: int = 1
   training_divisor: int = 1
 
+  training_steps = 0
+
   def __post_init__(self, observation_space, action_space):
     self.device = self.device or ("cuda" if torch.cuda.is_available() else "cpu")
     model = self.Model(observation_space, action_space)
@@ -49,8 +51,6 @@ class Agent:
     self.critic_optimizer = optim.Adam(chain(self.model.value.parameters(), *(c.parameters() for c in self.model.critics)), lr=self.lr)
     self.memory = SimpleMemory(self.memory_size, self.batchsize, self.device)
 
-    self.num_updates = 0
-
     self.outnorm = self.OutputNorm(dim=1).to(self.device)
     self.outnorm_target = self.OutputNorm(dim=1).to(self.device)
 
@@ -60,10 +60,11 @@ class Agent:
 
     if train:
       self.memory.append(np.float32(r), np.float32(done), info, obs, action)
-      if len(self.memory) >= self.start_training and (self.num_updates // self.training_iterations) % self.training_divisor == 0:
+      if len(self.memory) >= self.start_training and self.training_steps % self.training_divisor == 0:
         for _ in range(self.training_iterations):
           stats.update(self.train())
 
+      self.training_steps += 1
     return action, stats
 
   def train(self):
