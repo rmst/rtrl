@@ -17,8 +17,8 @@ class Training:
   Env: type = GymEnv
   Test: type = Test
   Agent: type = rtrl.sac.Agent
-  steps: int = 1000  # number of steps per round
-  rounds: int = 20  # number of rounds per epoch
+  steps: int = 2000  # number of steps per round
+  rounds: int = 10  # number of rounds per epoch
   seed: int = 0
   epochs: int = 50
 
