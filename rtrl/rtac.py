@@ -16,19 +16,20 @@ class Agent(rtrl.sac.Agent):
   loss_alpha: float = 0.2
 
   def __post_init__(self, observation_space, action_space):
+    device = self.device or ("cuda" if torch.cuda.is_available() else "cpu")
     model = self.Model(observation_space, action_space)
-    self.model = model.to(self.device)
+    self.model = model.to(device)
     self.model_target = no_grad(deepcopy(self.model))
     # polyak(self.model_target, self.model, 0)  # ensure they have equal parameter values
 
     self.opt = torch.optim.Adam(self.model.parameters(), lr=self.lr)
-    self.memory = SimpleMemory(self.memory_size, self.batchsize, self.device)
+    self.memory = SimpleMemory(self.memory_size, self.batchsize, device)
 
     self.num_updates = 0
     self.is_training = False
 
-    self.outnorm = self.OutputNorm(1).to(self.device)
-    self.outnorm_target = self.OutputNorm(1).to(self.device)
+    self.outnorm = self.OutputNorm(1).to(device)
+    self.outnorm_target = self.OutputNorm(1).to(device)
 
   def train(self):
     stats = {}

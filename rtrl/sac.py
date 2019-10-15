@@ -43,17 +43,17 @@ class Agent:
   num_updates = 0
 
   def __post_init__(self, observation_space, action_space):
-    self.device = self.device or ("cuda" if torch.cuda.is_available() else "cpu")
+    device = self.device or ("cuda" if torch.cuda.is_available() else "cpu")
     model = self.Model(observation_space, action_space)
-    self.model: Agent.Model = model.to(self.device)
+    self.model: Agent.Model = model.to(device)
     self.model_target: Agent.Model = no_grad(deepcopy(self.model))
 
     self.policy_optimizer = optim.Adam(self.model.actor.parameters(), lr=self.lr)
     self.critic_optimizer = optim.Adam(chain(self.model.value.parameters(), *(c.parameters() for c in self.model.critics)), lr=self.lr)
-    self.memory = SimpleMemory(self.memory_size, self.batchsize, self.device)
+    self.memory = SimpleMemory(self.memory_size, self.batchsize, device)
 
-    self.outnorm = self.OutputNorm(dim=1).to(self.device)
-    self.outnorm_target = self.OutputNorm(dim=1).to(self.device)
+    self.outnorm = self.OutputNorm(dim=1).to(device)
+    self.outnorm_target = self.OutputNorm(dim=1).to(device)
 
   def act(self, obs, r, done, info, train=False):
     stats = []
