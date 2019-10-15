@@ -36,6 +36,9 @@ class Agent:
 
   model_nograd = cached_property(lambda self: no_grad(copy_shared(self.model)))
 
+  training_iterations: int = 1
+  training_divisor: int = 1
+
   def __post_init__(self, observation_space, action_space):
     self.device = self.device or ("cuda" if torch.cuda.is_available() else "cpu")
     model = self.Model(observation_space, action_space)
@@ -57,8 +60,9 @@ class Agent:
 
     if train:
       self.memory.append(np.float32(r), np.float32(done), info, obs, action)
-      if len(self.memory) >= self.start_training:
-        stats.update(self.train())
+      if len(self.memory) >= self.start_training and (self.num_updates // self.training_iterations) % self.training_divisor == 0:
+        for _ in range(self.training_iterations):
+          stats.update(self.train())
 
     return action, stats
 
