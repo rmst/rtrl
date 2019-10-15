@@ -90,6 +90,18 @@ class DictActionWrapper(gym.Wrapper):
     return self.env.step(action['value'])
 
 
+class AffineObservationWrapper(gym.ObservationWrapper):
+  def __init__(self, env, shift, scale):
+    super().__init__(env)
+    assert isinstance(env.observation_space, gym.spaces.Box)
+    self.shift = shift
+    self.scale = scale
+    self.observation_space = gym.spaces.Box(self.observation(env.observation_space.low), self.observation(env.observation_space.high), dtype=env.observation_space.dtype)
+
+  def observation(self, obs):
+    return (obs + self.shift) * self.scale
+
+
 class NormalizeActionWrapper(gym.Wrapper):
   def __init__(self, env):
     super().__init__(env)

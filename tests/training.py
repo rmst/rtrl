@@ -4,7 +4,7 @@ import gym
 import numpy as np
 import torch
 
-from rtrl.models import Mlp
+from rtrl.sac_models import Mlp
 from rtrl import *
 
 

@@ -7,12 +7,12 @@ from torch.nn.functional import mse_loss
 import rtrl.sac
 from rtrl.memory import SimpleMemory
 from rtrl.nn import no_grad, copy_shared
-import rtrl.models
+import rtrl.sac_models
 
 
 @dataclass(eq=0)
 class Agent(rtrl.sac.Agent):
-  Model: type = rtrl.models.MlpRTDouble
+  Model: type = rtrl.sac_models.MlpRTDouble
   loss_alpha: float = 0.2
 
   def __post_init__(self, observation_space, action_space):
@@ -105,6 +105,7 @@ if __name__ == "__main__":
     rounds=5,
     steps=100,
     Agent=partial(Agent, memory_size=1000000, start_training=256, batchsize=4),
-    Env=partial(id="Pendulum-v0", real_time=True),
+    # Env=partial(id="Pendulum-v0", real_time=True),
+    Env=partial(id="HalfCheetah-v2", real_time=True),
   )
   run(Rtac_Test)

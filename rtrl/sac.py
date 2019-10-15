@@ -4,7 +4,7 @@ from dataclasses import dataclass, InitVar
 from functools import lru_cache
 from itertools import chain
 
-import rtrl.models
+import rtrl.sac_models
 import torch
 from torch import optim
 from torch.nn.functional import mse_loss
@@ -20,7 +20,7 @@ import numpy as np
 class Agent:
   observation_space: InitVar
   action_space: InitVar
-  Model: type = rtrl.models.Mlp
+  Model: type = rtrl.sac_models.Mlp
   OutputNorm: type = PopArt
 
   batchsize: int = 256  # training batch size
@@ -36,10 +36,6 @@ class Agent:
 
   model_nograd = cached_property(lambda self: no_grad(copy_shared(self.model)))
 
-  training_iterations: int = 1
-  training_divisor: int = 1
-
-  training_steps = 0
   num_updates = 0
 
   def __post_init__(self, observation_space, action_space):
@@ -61,11 +57,10 @@ class Agent:
 
     if train:
       self.memory.append(np.float32(r), np.float32(done), info, obs, action)
-      if len(self.memory) >= self.start_training and self.training_steps % self.training_divisor == 0:
-        for _ in range(self.training_iterations):
-          stats += self.train(),
+      if len(self.memory) >= self.start_training:
+        # TODO: normalize observations and rewards
+        stats += self.train(),
 
-      self.training_steps += 1
     return action, stats
 
   def train(self):
