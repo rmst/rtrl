@@ -80,11 +80,11 @@ class Mlp(Module):
     self.device = device
     return super().to(device=device)
 
-  def act(self, obs, r, done, info):
+  def act(self, obs, r, done, info, train=False):
     obs_col = collate((obs,), device=self.device)
     with torch.no_grad():
       action_distribution = self.actor(obs_col)
-      action_col = action_distribution.sample()
+      action_col = action_distribution.sample() if train else action_distribution.sample_deterministic()
     action, = partition(action_col)
     return action, []
 
@@ -109,8 +109,8 @@ class MlpRT(Module):
     assert isinstance(observation_space, gym.spaces.Tuple)
     input_dim = sum(s.shape[0] for s in observation_space)
     self.net = Sequential(
-      RlkitLinear(input_dim, self.hidden_units), ReLU(),
-      RlkitLinear(self.hidden_units, self.hidden_units), ReLU()
+      Linear(input_dim, self.hidden_units), ReLU(),
+      Linear(self.hidden_units, self.hidden_units), ReLU()
     )
 
     self.critic = Linear(self.hidden_units, 1)
@@ -147,11 +147,11 @@ class MlpRTDouble(torch.nn.Module):
     self.device = device
     return super().to(device=device)
 
-  def act(self, obs, r, done, info):
+  def act(self, obs, r, done, info, train=False):
     obs_col = collate((obs,), device=self.device)
     with torch.no_grad():
       action_distribution, _ = self.a(obs_col)
-      action_col = action_distribution.sample()
+      action_col = action_distribution.sample() if train else action_distribution.sample_deterministic()
     action, = partition(action_col)
     return action, []
 

@@ -51,7 +51,6 @@ class Agent(rtrl.sac.Agent):
     _, v2s_target = self.model_target(new_next_obs_tgt)
     _, v2s = self.model_nograd(new_next_obs)
 
-    # v2_target, _ = v2_target.min(1, keepdim=True)
     v2_target, _ = torch.stack(v2s_target, 2).min(2)
     v2, _ = torch.stack(v2s, 2).min(2)
 
@@ -104,7 +103,7 @@ if __name__ == "__main__":
     epochs=3,
     rounds=5,
     steps=100,
-    Agent=partial(Agent, memory_size=1000000, start_training=256),
+    Agent=partial(Agent, memory_size=1000000, start_training=256, batchsize=4),
     Env=partial(id="Pendulum-v0", real_time=True),
   )
   run(Rtac_Test)

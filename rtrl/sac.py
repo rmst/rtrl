@@ -57,7 +57,7 @@ class Agent:
 
   def act(self, obs, r, done, info, train=False):
     stats = []
-    action, _ = self.model.act(obs, r, done, info)
+    action, _ = self.model.act(obs, r, done, info, train)
 
     if train:
       self.memory.append(np.float32(r), np.float32(done), info, obs, action)
