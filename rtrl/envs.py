@@ -41,8 +41,8 @@ class GymEnv(gym.Wrapper):
 
   def __post_init__(self, seed_val):
     env = gym.make(self.id)
-    if self.id.startswith("HalfCheetah"):
-      env = normalize_half_cheetah(env)
+    # if self.id.startswith("HalfCheetah"):
+    #   env = normalize_half_cheetah(env)
 
     env = Float64ToFloat32(env)
     env = TimeLimitResetWrapper(env)
