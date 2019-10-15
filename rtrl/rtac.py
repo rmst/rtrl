@@ -1,6 +1,7 @@
 from copy import deepcopy
 from dataclasses import dataclass
 
+import rtrl.rtac_models
 import torch
 from torch.nn.functional import mse_loss
 
@@ -12,7 +13,7 @@ import rtrl.sac_models
 
 @dataclass(eq=0)
 class Agent(rtrl.sac.Agent):
-  Model: type = rtrl.sac_models.MlpRTDouble
+  Model: type = rtrl.rtac_models.MlpRTDouble
   loss_alpha: float = 0.2
 
   def __post_init__(self, observation_space, action_space):

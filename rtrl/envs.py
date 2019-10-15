@@ -1,7 +1,7 @@
 from dataclasses import dataclass, InitVar
 import gym
 from rtrl.wrappers import Float64ToFloat32, TimeLimitResetWrapper, NormalizeActionWrapper, RealTimeWrapper, \
-  TupleObservationWrapper, AffineObservationWrapper
+  TupleObservationWrapper, AffineObservationWrapper, AffineRewardWrapper
 import numpy as np
 
 
@@ -18,9 +18,6 @@ def mujoco_py_issue_424_workaround():
   [os.remove(join(path, name)) for name in os.listdir(path) if name.endswith("lock")]
 
 
-mujoco_py_issue_424_workaround()
-
-
 def normalize_half_cheetah(env):
   mean = np.array((0.22799526154994965, 1.5053091049194336, 0.2822640538215637, 0.28506359457969666, 0.2727450430393219,
          0.38986486196517944, 0.33656004071235657, 0.28865376114845276, 0.7166818976402283, 0.761592447757721,
@@ -31,7 +28,9 @@ def normalize_half_cheetah(env):
          0.5800230503082275, 2.602705240249634, 32.99674606323242, 44.959251403808594, 58.37958908081055,
          43.99592971801758, 52.44496536254883, 37.8943977355957))
 
-  return AffineObservationWrapper(env, -mean, 1/std)
+  env = AffineObservationWrapper(env, -mean, 1/std)
+  env = AffineRewardWrapper(env, 0., 1.)
+  return env
 
 
 @dataclass(eq=0)

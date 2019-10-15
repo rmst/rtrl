@@ -57,9 +57,10 @@ def partial(func: Type[T] = default, *args, **kwargs) -> Union[T, Type[T]]:
   """Like `functools.partial`, except if used as a keyword argument for another `partial` and no function is supplied.
    Then, the outer `partial` will insert the appropriate default value as the function. """
 
-  for k, v in kwargs.items():
-    if isinstance(v, functools.partial) and v.func is default:
-      kwargs[k] = partial(inspect.signature(func).parameters[k].default, *v.args, **v.keywords)
+  if func is not default:
+    for k, v in kwargs.items():
+      if isinstance(v, functools.partial) and v.func is default:
+        kwargs[k] = partial(inspect.signature(func).parameters[k].default, *v.args, **v.keywords)
   return functools.partial(func, *args, **kwargs)
 
 
@@ -144,7 +145,7 @@ def git_info(path=None):
   url = get_output('git config --get remote.origin.url'.split(), cwd=path).strip()
   # if on github, change remote to a meaningful https url
   if url.startswith('git@github.com:'):
-    remote = 'https://github.com/' + url[len('git@github.com:'):-len('.git')] + '/commit/' + rev
+    url = 'https://github.com/' + url[len('git@github.com:'):-len('.git')] + '/commit/' + rev
   elif url.startswith('https://github.com'):
     url = url[:len('.git')] + '/commit/' + rev
 

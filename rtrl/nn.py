@@ -1,9 +1,11 @@
 from copy import deepcopy
 from dataclasses import InitVar, dataclass
 
+import numpy as np
 import torch
 from torch import nn
 from torch.distributions import Distribution, Normal
+from torch.nn import Linear
 
 
 def no_grad(model):
@@ -131,3 +133,24 @@ class TanhNormalLayer(nn.Module):
     # a = TanhTransformedDist(Independent(Normal(m, std), 1))
     a = Independent(TanhNormal(mean, std), 1)
     return a
+
+
+class RlkitLinear(Linear):
+  def __init__(self, *args):
+    super().__init__(*args)
+    fan_in = self.weight.shape[0]
+    bound = 1. / np.sqrt(fan_in)
+    self.weight.data.uniform_(-bound, bound)
+    self.bias.data.fill_(0.1)
+
+
+class LinearConstBias(Linear):
+  def __init__(self, *args):
+    super().__init__(*args)
+    self.bias.data.fill_(0.1)
+
+
+class LinearZeroBias(Linear):
+  def __init__(self, *args):
+    super().__init__(*args)
+    self.bias.data.fill_(0)

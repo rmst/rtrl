@@ -102,6 +102,16 @@ class AffineObservationWrapper(gym.ObservationWrapper):
     return (obs + self.shift) * self.scale
 
 
+class AffineRewardWrapper(gym.RewardWrapper):
+  def __init__(self, env, shift, scale):
+    super().__init__(env)
+    self.shift = shift
+    self.scale = scale
+
+  def reward(self, reward):
+    return (reward + self.shift) / self.scale
+
+
 class NormalizeActionWrapper(gym.Wrapper):
   def __init__(self, env):
     super().__init__(env)
