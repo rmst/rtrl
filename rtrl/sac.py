@@ -40,6 +40,7 @@ class Agent:
   training_divisor: int = 1
 
   training_steps = 0
+  num_updates = 0
 
   def __post_init__(self, observation_space, action_space):
     self.device = self.device or ("cuda" if torch.cuda.is_available() else "cpu")
