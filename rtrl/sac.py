@@ -31,7 +31,7 @@ class Agent:
   keep_reset_transitions: int = 0
   reward_scale: float = 5.
   entropy_scale: float = 1.
-  start_training: int = 1000
+  start_training: int = 10000
   device: str = None
 
   model_nograd = cached_property(lambda self: no_grad(copy_shared(self.model)))

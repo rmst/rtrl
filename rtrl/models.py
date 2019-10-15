@@ -86,7 +86,7 @@ class Mlp(Module):
       action_distribution = self.actor(obs_col)
       action_col = action_distribution.sample()
     action, = partition(action_col)
-    return action, {}
+    return action, []
 
 
 # === Testing ==========================================================================================================
@@ -103,9 +103,6 @@ class MlpRT(Module):
   action_space: InitVar
   hidden_units: int = 256
   # num_critics: int = 1
-  #
-  # def __hash__(self):
-  #   return id(self)
 
   def __post_init__(self, observation_space, action_space):
     super().__init__()
@@ -156,7 +153,7 @@ class MlpRTDouble(torch.nn.Module):
       action_distribution, _ = self.a(obs_col)
       action_col = action_distribution.sample()
     action, = partition(action_col)
-    return action, {}
+    return action, []
 
 
 @dataclass(eq=0)
