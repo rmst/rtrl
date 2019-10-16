@@ -33,7 +33,6 @@ class MlpRT(Module):
 
   def forward(self, x):
     assert isinstance(x, tuple)
-    x = (x[0], x[1] * 0.1)  # TODO: remove, testing: initially actions don't influence the value
     x = torch.cat(x, dim=1)
     h = self.net(x)
     v = self.critic(h)
