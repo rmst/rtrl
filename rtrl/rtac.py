@@ -99,13 +99,13 @@ class Agent(rtrl.sac.Agent):
 
 if __name__ == "__main__":
   from rtrl import partial, Training, run
-
+  from rtrl.nn import RlkitLinear
   Rtac_Test = partial(
     Training,
     epochs=3,
     rounds=5,
     steps=100,
-    Agent=partial(Agent, memory_size=1000000, start_training=256, batchsize=4),
+    Agent=partial(Agent, memory_size=1000000, start_training=256, batchsize=4, Model=partial(Linear=RlkitLinear)),
     # Env=partial(id="Pendulum-v0", real_time=True),
     Env=partial(id="HalfCheetah-v2", real_time=True),
   )

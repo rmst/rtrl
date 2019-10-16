@@ -25,6 +25,9 @@ class MlpRT(Module):
     )
 
     self.critic = Linear(self.hidden_units, 1)
+    self.critic.weight.data.uniform_(-1e-3, 1e-3)
+    self.critic.bias.data.uniform_(-1e-3, 1e-3)
+
     self.actor = TanhNormalLayer(self.hidden_units, action_space.shape[0])
     self.v_out = (self.critic,)
 

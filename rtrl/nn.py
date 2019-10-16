@@ -138,7 +138,8 @@ class TanhNormalLayer(nn.Module):
 class RlkitLinear(Linear):
   def __init__(self, *args):
     super().__init__(*args)
-    fan_in = self.weight.shape[0]
+    # TODO: investigate the following
+    fan_in = self.weight.shape[0]  # this is actually fanout!!!
     bound = 1. / np.sqrt(fan_in)
     self.weight.data.uniform_(-bound, bound)
     self.bias.data.fill_(0.1)
