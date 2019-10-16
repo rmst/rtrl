@@ -139,6 +139,8 @@ class RlkitLinear(Linear):
   def __init__(self, *args):
     super().__init__(*args)
     # TODO: investigate the following
+    # this mistake seems to be in rlkit too
+    # https://github.com/vitchyr/rlkit/blob/master/rlkit/torch/pytorch_util.py
     fan_in = self.weight.shape[0]  # this is actually fanout!!!
     bound = 1. / np.sqrt(fan_in)
     self.weight.data.uniform_(-bound, bound)
