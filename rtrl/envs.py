@@ -41,9 +41,9 @@ class GymEnv(gym.Wrapper):
 
   def __post_init__(self, seed_val):
     env = gym.make(self.id)
-    if self.id.startswith("HalfCheetah"):
-      # env = normalize_half_cheetah(env)
-      env = AffineObservationWrapper(env, 0., 0.1)
+    # if self.id.startswith("HalfCheetah"):
+    #   # env = normalize_half_cheetah(env)
+    #   env = AffineObservationWrapper(env, 0., 0.1)
 
     env = Float64ToFloat32(env)
     env = TimeLimitResetWrapper(env)
@@ -76,5 +76,7 @@ class AvenueEnv(gym.Wrapper):
     # env = DictActionWrapper(env)
     if self.real_time:
       env = RealTimeWrapper(env)
+    else:
+      env = TupleObservationWrapper(env)
     super().__init__(env)
     self.seed(seed_val)
