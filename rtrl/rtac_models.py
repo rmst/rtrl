@@ -14,14 +14,15 @@ class MlpRT(Module):
   action_space: InitVar
   hidden_units: int = 256
   Linear: type = Linear
+  Activation: type = ReLU
 
   def __post_init__(self, observation_space, action_space):
     super().__init__()
     assert isinstance(observation_space, gym.spaces.Tuple)
     input_dim = sum(s.shape[0] for s in observation_space)
     self.net = Sequential(
-      self.Linear(input_dim, self.hidden_units), ReLU(),
-      self.Linear(self.hidden_units, self.hidden_units), ReLU()
+      self.Linear(input_dim, self.hidden_units), self.Activation(),
+      self.Linear(self.hidden_units, self.hidden_units), self.Activation()
     )
 
     self.critic = Linear(self.hidden_units, 1)
