@@ -149,9 +149,20 @@ class RlkitLinear(torch.nn.Linear):
 
 
 @dataclass(eq=0)
-class AffineReLU(torch.nn.Linear):
+class BasicReLU(torch.nn.Linear):
   in_features: InitVar
   out_features: InitVar
+
+  def __post_init__(self, in_features: int, out_features: int):
+    super().__init__(in_features, out_features)
+
+  def forward(self, x):
+    x = super().forward(x)
+    return torch.relu(x)
+
+
+@dataclass(eq=0)
+class AffineReLU(BasicReLU):
   init_weight_bound: float = 1.
   init_bias: float = 0.
 
@@ -161,10 +172,6 @@ class AffineReLU(torch.nn.Linear):
     self.weight.data.uniform_(-bound, bound)
     self.bias.data.fill_(self.init_bias)
 
-  def forward(self, x):
-    x = super().forward(x)
-    return torch.relu(x)
-
 
 class KaimingReLU(torch.nn.Linear):
   def __init__(self, in_features, out_features):
@@ -172,10 +179,11 @@ class KaimingReLU(torch.nn.Linear):
     with torch.no_grad():
       kaiming_uniform_(self.weight)
       self.bias.fill_(0.)
-      
+
   def forward(self, x):
     x = super().forward(x)
     return torch.relu(x)
+
 
 Linear10 = partial(AffineReLU, init_bias=1.)
 Linear04 = partial(AffineReLU, init_bias=0.4)
