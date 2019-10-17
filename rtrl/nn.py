@@ -4,6 +4,7 @@ from dataclasses import InitVar, dataclass
 import numpy as np
 import torch
 from torch.distributions import Distribution, Normal
+from torch.nn.init import kaiming_uniform_
 
 from rtrl import partial
 
@@ -164,6 +165,17 @@ class AffineReLU(torch.nn.Linear):
     x = super().forward(x)
     return torch.relu(x)
 
+
+class KaimingReLU(torch.nn.Linear):
+  def __init__(self, in_features, out_features):
+    super().__init__(in_features, out_features)
+    with torch.no_grad():
+      kaiming_uniform_(self.weight)
+      self.bias.fill_(0.)
+      
+  def forward(self, x):
+    x = super().forward(x)
+    return torch.relu(x)
 
 Linear10 = partial(AffineReLU, init_bias=1.)
 Linear04 = partial(AffineReLU, init_bias=0.4)
