@@ -3,9 +3,9 @@ from dataclasses import InitVar, dataclass
 
 import numpy as np
 import torch
-from torch import nn
 from torch.distributions import Distribution, Normal
-from torch.nn import Linear
+
+from rtrl import partial
 
 
 def no_grad(model):
@@ -113,7 +113,7 @@ class Independent(torch.distributions.Independent):
     return torch.tanh(self.base_dist.normal_mean)
 
 
-class TanhNormalLayer(nn.Module):
+class TanhNormalLayer(torch.nn.Module):
   def __init__(self, n, m):
     super().__init__()
 
@@ -135,7 +135,7 @@ class TanhNormalLayer(nn.Module):
     return a
 
 
-class RlkitLinear(Linear):
+class RlkitLinear(torch.nn.Linear):
   def __init__(self, *args):
     super().__init__(*args)
     # TODO: investigate the following
@@ -147,25 +147,26 @@ class RlkitLinear(Linear):
     self.bias.data.fill_(0.1)
 
 
-class Linear10(Linear):
-  def __init__(self, *args):
-    super().__init__(*args)
-    self.bias.data.fill_(1.)
+@dataclass(eq=0)
+class AffineReLU(torch.nn.Linear):
+  in_features: InitVar
+  out_features: InitVar
+  init_weight_bound: float = 1.
+  init_bias: float = 0.
+
+  def __post_init__(self, in_features: int, out_features: int):
+    super().__init__(in_features, out_features)
+    bound = self.init_weight_bound / np.sqrt(in_features)
+    self.weight.data.uniform_(-bound, bound)
+    self.bias.data.fill_(self.init_bias)
+
+  def forward(self, x):
+    x = super().forward(x)
+    return torch.relu(x)
 
 
-class Linear04(Linear):
-  def __init__(self, *args):
-    super().__init__(*args)
-    self.bias.data.fill_(0.4)
-
-
-class LinearConstBias(Linear):
-  def __init__(self, *args):
-    super().__init__(*args)
-    self.bias.data.fill_(0.1)
-
-
-class LinearZeroBias(Linear):
-  def __init__(self, *args):
-    super().__init__(*args)
-    self.bias.data.fill_(0)
+Linear10 = partial(AffineReLU, init_bias=1.)
+Linear04 = partial(AffineReLU, init_bias=0.4)
+LinearConstBias = partial(AffineReLU, init_bias=0.1)
+LinearZeroBias = partial(AffineReLU, init_bias=0.)
+AffineSimon = partial(AffineReLU, init_weight_bound=0.01, init_bias=1.)

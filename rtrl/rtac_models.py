@@ -20,8 +20,8 @@ class MlpRT(Module):
     assert isinstance(observation_space, gym.spaces.Tuple)
     input_dim = sum(s.shape[0] for s in observation_space)
     self.net = Sequential(
-      self.Linear(input_dim, self.hidden_units), LeakyReLU(),
-      self.Linear(self.hidden_units, self.hidden_units), LeakyReLU()
+      self.Linear(input_dim, self.hidden_units),
+      self.Linear(self.hidden_units, self.hidden_units)
     )
 
     self.critic = Linear(self.hidden_units, 1)
