@@ -16,7 +16,7 @@ class SimpleMemory:
   def append(self, r, done, info, obs, action):
     if self.last_observation is not None:
       # info["reset"] = True means the episode reset shouldn't be learned (e.g. time limit)
-      if self.keep_reset_transitions or not info.get('reset', False):
+      if self.keep_reset_transitions or not info.get('TimeLimit.truncated', False):
         self.memory.append((self.last_observation, self.last_action, r, obs, done))
 
     self.last_observation = obs

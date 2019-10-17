@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import rtrl.rtac_models
 import torch
+from rtrl.envs import AvenueEnv
 from torch.nn.functional import mse_loss
 
 import rtrl.sac
@@ -100,6 +101,7 @@ class Agent(rtrl.sac.Agent):
 if __name__ == "__main__":
   from rtrl import partial, Training, run
   from rtrl.nn import RlkitLinear
+  from rtrl.rtac_models import ConvRTAC
   Rtac_Test = partial(
     Training,
     epochs=3,
@@ -109,4 +111,16 @@ if __name__ == "__main__":
     # Env=partial(id="Pendulum-v0", real_time=True),
     Env=partial(id="HalfCheetah-v2", real_time=True),
   )
+
+  Rtac_Avenue_Test = partial(
+    Training,
+    epochs=3,
+    rounds=5,
+    steps=100,
+    Agent=partial(Agent, memory_size=1000000, start_training=256, batchsize=4, Model=partial(ConvRTAC)),
+    # Env=partial(id="Pendulum-v0", real_time=True),
+    Env=partial(AvenueEnv, real_time=True),
+  )
+
   run(Rtac_Test)
+  # run(Rtac_Avenue_Test)

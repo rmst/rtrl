@@ -147,6 +147,18 @@ class RlkitLinear(Linear):
     self.bias.data.fill_(0.1)
 
 
+class Linear10(Linear):
+  def __init__(self, *args):
+    super().__init__(*args)
+    self.bias.data.fill_(1.)
+
+
+class Linear04(Linear):
+  def __init__(self, *args):
+    super().__init__(*args)
+    self.bias.data.fill_(0.4)
+
+
 class LinearConstBias(Linear):
   def __init__(self, *args):
     super().__init__(*args)
