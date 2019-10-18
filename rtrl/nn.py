@@ -148,35 +148,24 @@ class RlkitLinear(torch.nn.Linear):
     self.bias.data.fill_(0.1)
 
 
-@dataclass(eq=0)
 class BasicReLU(torch.nn.Linear):
-  in_features: InitVar
-  out_features: InitVar
-
-  def __post_init__(self, in_features: int, out_features: int):
-    super().__init__(in_features, out_features)
-
   def forward(self, x):
     x = super().forward(x)
     return torch.relu(x)
 
 
-@dataclass(eq=0)
 class AffineReLU(BasicReLU):
-  init_weight_bound: float = 1.
-  init_bias: float = 0.
-
-  def __post_init__(self, in_features: int, out_features: int):
+  def __init__(self, in_features, out_features, init_weight_bound: float = 1., init_bias: float = 0.):
     super().__init__(in_features, out_features)
-    bound = self.init_weight_bound / np.sqrt(in_features)
+    bound = init_weight_bound / np.sqrt(in_features)
     self.weight.data.uniform_(-bound, bound)
-    self.bias.data.fill_(self.init_bias)
+    self.bias.data.fill_(init_bias)
 
 
 class NormalizedReLU(torch.nn.Sequential):
-  def __init__(self, in_features, out_features):
+  def __init__(self, in_features, out_features, prenorm_bias=True):
     super().__init__(
-      torch.nn.Linear(in_features, out_features),
+      torch.nn.Linear(in_features, out_features, bias=prenorm_bias),
       torch.nn.LayerNorm(out_features),
       torch.nn.ReLU())
 
