@@ -173,6 +173,14 @@ class AffineReLU(BasicReLU):
     self.bias.data.fill_(self.init_bias)
 
 
+class NormalizedReLU(torch.nn.Sequential):
+  def __init__(self, in_features, out_features):
+    super().__init__(
+      torch.nn.Linear(in_features, out_features),
+      torch.nn.LayerNorm(out_features),
+      torch.nn.ReLU())
+
+
 class KaimingReLU(torch.nn.Linear):
   def __init__(self, in_features, out_features):
     super().__init__(in_features, out_features)
