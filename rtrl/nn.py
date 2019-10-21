@@ -4,7 +4,7 @@ from dataclasses import InitVar, dataclass
 import numpy as np
 import torch
 from torch.distributions import Distribution, Normal
-from torch.nn.init import kaiming_uniform_
+from torch.nn.init import kaiming_uniform_, xavier_uniform_, calculate_gain
 
 from rtrl import partial
 
@@ -134,6 +134,27 @@ class TanhNormalLayer(torch.nn.Module):
     # a = TanhTransformedDist(Independent(Normal(m, std), 1))
     a = Independent(TanhNormal(mean, std), 1)
     return a
+
+
+# class TanhNormalLayer(torch.nn.Module):
+#   def __init__(self, n, m):
+#     super().__init__()
+#     with torch.no_grad():
+#       self.lin_mean = torch.nn.Linear(n, m)
+#       xavier_uniform_(self.lin_mean.weight, calculate_gain('tanh'))
+#       self.lin_mean.bias.fill_(0)
+#       self.lin_std = torch.nn.Linear(n, m)
+#       xavier_uniform_(self.lin_std.weight, calculate_gain('tanh'))
+#       self.lin_std.bias.fill_(0)
+#
+#   def forward(self, x):
+#     mean = self.lin_mean(x)
+#     log_std = self.lin_std(x)
+#     log_std = torch.clamp(log_std, -20, 2)
+#     std = torch.exp(log_std)
+#     # a = TanhTransformedDist(Independent(Normal(m, std), 1))
+#     a = Independent(TanhNormal(mean, std), 1)
+#     return a
 
 
 class RlkitLinear(torch.nn.Linear):
