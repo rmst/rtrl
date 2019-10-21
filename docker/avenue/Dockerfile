@@ -6,18 +6,10 @@ FROM ${BASE}
 
 WORKDIR /app
 
-ENV GIT_SSH_COMMAND 'ssh -o "StrictHostKeyChecking no"'
-
-#ARG MLAGENTS_REV
-#RUN --mount=type=ssh git clone git@github.com:rmst/ml-agents-frozen.git ml-agents \
-#  && cd ml-agents \
-#  && git reset --hard $MLAGENTS_REV \
-#  && pip --no-cache-dir install Pillow \
-#  && pip --no-cache-dir install -e ./ml-agents \
-#  && pip --no-cache-dir install -e ./gym-unity
+#ENV GIT_SSH_COMMAND 'ssh -o "StrictHostKeyChecking no"'
 
 ARG AVENUE_REV
-RUN --mount=type=ssh git clone git@github.com:ElementAI/Avenue.git avenue \
+RUN --mount=type=ssh git clone git@github.com:elementai/avenue.git avenue \
   && cd avenue \
   && git reset --hard $AVENUE_REV \
   && pip --no-cache-dir install -e .
