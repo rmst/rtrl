@@ -1,3 +1,4 @@
+import atexit
 from dataclasses import dataclass, InitVar
 import gym
 from rtrl.wrappers import Float64ToFloat32, TimeLimitResetWrapper, NormalizeActionWrapper, RealTimeWrapper, \
@@ -63,23 +64,27 @@ class GymEnv(gym.Wrapper):
     self.seed(seed_val)
 
 
-@dataclass(eq=0)
-class AvenueEnv(gym.Wrapper):
-  seed_val: InitVar[int]  # the name seed is already taken by the gym.Env.seed function
-  id: str = "LaneFollowingTrack"
-  real_time: bool = False
-
-  def __post_init__(self, seed_val):
+class AvenueEnv(gym.ObservationWrapper):
+  def __init__(self, seed_val, id: str = "LaneFollowingTrack", real_time: bool = False):
     import avenue
-    env = avenue.make(self.id)
-    env = TimeLimitResetWrapper(env)
+    env = avenue.make(id)
+    # env = TimeLimitResetWrapper(env)
     # env = DictObservationWrapper(env)
     assert isinstance(env.action_space, gym.spaces.Box)
     env = NormalizeActionWrapper(env)
     # env = DictActionWrapper(env)
-    if self.real_time:
+    if real_time:
       env = RealTimeWrapper(env)
     else:
       env = TupleObservationWrapper(env)
     super().__init__(env)
+
+    # bring images into right format: batch x channels x height x width
+    (img_sp, vec_sp), *more = env.observation_space
+    img_sp = gym.spaces.Box(img_sp.low.transpose(2, 0, 1), img_sp.high.transpose(2, 0, 1), dtype=img_sp.dtype)
+    self.observation_space = gym.spaces.Tuple((gym.spaces.Tuple((img_sp, vec_sp)), *more))
     self.seed(seed_val)
+
+  def observation(self, observation):
+    (img, vec), *more = observation
+    return ((img.transpose(2, 0, 1), vec), *more)

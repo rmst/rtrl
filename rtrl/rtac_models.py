@@ -41,7 +41,7 @@ class MlpRT(Module):
 
 
 @dataclass(eq=0)
-class MlpRTDouble(torch.nn.Module):
+class TwinModel(torch.nn.Module):
   observation_space: InitVar
   action_space: InitVar
   hidden_units: int = 256
@@ -51,6 +51,31 @@ class MlpRTDouble(torch.nn.Module):
     super().__init__()
     self.a = MlpRT(observation_space, action_space, hidden_units=self.hidden_units, Linear=self.Linear)
     self.b = MlpRT(observation_space, action_space, hidden_units=self.hidden_units, Linear=self.Linear)
+    self.v_out = self.a.v_out + self.b.v_out
+
+  def forward(self, x):
+    action_distribution, (v0,) = self.a(x)
+    _, (v1,) = self.b(x)
+    return action_distribution, (v0, v1)
+
+  def to(self, device):
+    self.device = device
+    return super().to(device=device)
+
+  def act(self, obs, r, done, info, train=False):
+    obs_col = collate((obs,), device=self.device)
+    with torch.no_grad():
+      action_distribution, _ = self.a(obs_col)
+      action_col = action_distribution.sample() if train else action_distribution.sample_deterministic()
+    action, = partition(action_col)
+    return action, []
+
+
+class ConvDouble(Module):
+  def __init__(self, observation_space, action_space, hidden_units: int = 256):
+    super().__init__()
+    self.a = ConvRTAC(observation_space, action_space, hidden_units=hidden_units)
+    self.b = ConvRTAC(observation_space, action_space, hidden_units=hidden_units)
     self.v_out = self.a.v_out + self.b.v_out
 
   def forward(self, x):

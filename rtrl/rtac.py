@@ -9,12 +9,11 @@ from torch.nn.functional import mse_loss
 import rtrl.sac
 from rtrl.memory import SimpleMemory
 from rtrl.nn import no_grad, copy_shared
-import rtrl.sac_models
 
 
 @dataclass(eq=0)
 class Agent(rtrl.sac.Agent):
-  Model: type = rtrl.rtac_models.MlpRTDouble
+  Model: type = rtrl.rtac_models.TwinModel
   loss_alpha: float = 0.2
 
   def __post_init__(self, observation_space, action_space):
@@ -101,7 +100,7 @@ class Agent(rtrl.sac.Agent):
 if __name__ == "__main__":
   from rtrl import partial, Training, run
   from rtrl.nn import RlkitLinear
-  from rtrl.rtac_models import ConvRTAC
+  from rtrl.rtac_models import ConvRTAC, ConvDouble
   Rtac_Test = partial(
     Training,
     epochs=3,
@@ -117,10 +116,11 @@ if __name__ == "__main__":
     epochs=3,
     rounds=5,
     steps=100,
-    Agent=partial(Agent, memory_size=1000000, start_training=256, batchsize=4, Model=partial(ConvRTAC)),
+    Agent=partial(Agent, device='cpu', lr=0.0001, memory_size=500000, start_training=256, batchsize=4, Model=partial(
+      ConvDouble)),
     # Env=partial(id="Pendulum-v0", real_time=True),
     Env=partial(AvenueEnv, real_time=True),
   )
 
-  run(Rtac_Test)
-  # run(Rtac_Avenue_Test)
+  # run(Rtac_Test)
+  run(Rtac_Avenue_Test)

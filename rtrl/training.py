@@ -70,3 +70,6 @@ class Training:
 
     self.epoch += 1
     return stats
+
+  def __del__(self):
+    self.env.close()

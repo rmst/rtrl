@@ -11,6 +11,7 @@ from tempfile import mkdtemp
 import pandas as pd
 import yaml
 
+from rtrl.envs import AvenueEnv
 from rtrl.util import partial, save_json, partial_to_dict, partial_from_dict, load_json, dump, load, git_info
 from rtrl.training import Training
 from rtrl.rtac import Agent as RtacAgent
@@ -110,6 +111,19 @@ RtacTraining = partial(
   Agent=partial(RtacAgent, memory_size=1000000),
   Env=partial(id="Pendulum-v0", real_time=True),
 )
+
+from rtrl.rtac_models import ConvDouble
+RtacAvenueTraining = partial(
+  Training,
+  epochs=50,
+  rounds=4,
+  steps=5000,
+  Agent=partial(RtacAgent, lr=0.0001, memory_size=500000, start_training=10000, batchsize=100, Model=partial(
+    ConvDouble)),
+  # Env=partial(id="Pendulum-v0", real_time=True),
+  Env=partial(AvenueEnv, real_time=True),
+)
+
 
 # === tests ============================================================================================================
 if __name__ == "__main__":
