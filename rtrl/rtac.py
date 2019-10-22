@@ -122,5 +122,5 @@ if __name__ == "__main__":
     Env=partial(AvenueEnv, real_time=True),
   )
 
-  run(Rtac_Test)
-  # run(Rtac_Avenue_Test)
+  # run(Rtac_Test)
+  run(Rtac_Avenue_Test)

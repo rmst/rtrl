@@ -1,4 +1,5 @@
 import atexit
+import os
 from dataclasses import dataclass, InitVar
 import gym
 from rtrl.wrappers import Float64ToFloat32, TimeLimitResetWrapper, NormalizeActionWrapper, RealTimeWrapper, \
@@ -66,8 +67,13 @@ class GymEnv(gym.Wrapper):
 
 class AvenueEnv(gym.ObservationWrapper):
   def __init__(self, seed_val, id: str = "LaneFollowingTrack", real_time: bool = False):
+    pretend_cpus = os.getenv('PRETEND_CPUS')
+    if pretend_cpus:
+      os.environ['PRETEND_CPUS'] = "1"
     import avenue
     env = avenue.make(id)
+    if pretend_cpus:
+      os.environ['PRETEND_CPUS'] = pretend_cpus
     # env = TimeLimitResetWrapper(env)
     # env = DictObservationWrapper(env)
     assert isinstance(env.action_space, gym.spaces.Box)
