@@ -3,30 +3,27 @@ from dataclasses import dataclass, InitVar
 import gym
 import torch
 from rtrl.memory import collate, partition
-from rtrl.nn import TanhNormalLayer
+from rtrl.nn import TanhNormalLayer, SacLinear
 from torch.nn import Module, Linear, Sequential, ReLU, Conv2d, LeakyReLU
 from torch.nn.functional import leaky_relu
 
 
 @dataclass(eq=0)
-class MlpRT(Module):
+class Mlp(Module):
   observation_space: InitVar
   action_space: InitVar
   hidden_units: int = 256
-  Linear: type = Linear
 
   def __post_init__(self, observation_space, action_space):
     super().__init__()
     assert isinstance(observation_space, gym.spaces.Tuple)
     input_dim = sum(s.shape[0] for s in observation_space)
     self.net = Sequential(
-      self.Linear(input_dim, self.hidden_units),
-      self.Linear(self.hidden_units, self.hidden_units)
+      SacLinear(input_dim, self.hidden_units), ReLU(),
+      SacLinear(self.hidden_units, self.hidden_units), ReLU(),
     )
 
     self.critic = Linear(self.hidden_units, 1)
-    # self.critic.weight.data.uniform_(-1e-3, 1e-3)
-    # self.critic.bias.data.uniform_(-1e-3, 1e-3)
 
     self.actor = TanhNormalLayer(self.hidden_units, action_space.shape[0])
     self.v_out = (self.critic,)
@@ -45,12 +42,11 @@ class TwinModel(torch.nn.Module):
   observation_space: InitVar
   action_space: InitVar
   hidden_units: int = 256
-  Linear: type = Linear
 
   def __post_init__(self, observation_space, action_space):
     super().__init__()
-    self.a = MlpRT(observation_space, action_space, hidden_units=self.hidden_units, Linear=self.Linear)
-    self.b = MlpRT(observation_space, action_space, hidden_units=self.hidden_units, Linear=self.Linear)
+    self.a = Mlp(observation_space, action_space, hidden_units=self.hidden_units)
+    self.b = Mlp(observation_space, action_space, hidden_units=self.hidden_units)
     self.v_out = self.a.v_out + self.b.v_out
 
   def forward(self, x):

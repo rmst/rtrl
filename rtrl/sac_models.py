@@ -4,14 +4,14 @@ import gym
 import torch
 from rtrl.memory import collate, partition
 from torch.nn import Linear, Sequential, ReLU, ModuleList, Module
-from rtrl.nn import TanhNormalLayer
+from rtrl.nn import TanhNormalLayer, SacLinear
 
 
 class MlpActionValue(Sequential):
-  def __init__(self, dim_obs, dim_action, hidden_units, Linear=Linear):
+  def __init__(self, dim_obs, dim_action, hidden_units):
     super().__init__(
-      Linear(dim_obs + dim_action, hidden_units), ReLU(),
-      Linear(hidden_units, hidden_units), ReLU(),
+      SacLinear(dim_obs + dim_action, hidden_units), ReLU(),
+      SacLinear(hidden_units, hidden_units), ReLU(),
       Linear(hidden_units, 1)
     )
 
@@ -22,10 +22,10 @@ class MlpActionValue(Sequential):
 
 
 class MlpValue(Sequential):
-  def __init__(self, dim_obs, dim_action, hidden_units, Linear=Linear):
+  def __init__(self, dim_obs, dim_action, hidden_units):
     super().__init__(
-      Linear(dim_obs, hidden_units), ReLU(),
-      Linear(hidden_units, hidden_units), ReLU(),
+      SacLinear(dim_obs, hidden_units), ReLU(),
+      SacLinear(hidden_units, hidden_units), ReLU(),
       Linear(hidden_units, 1)
     )
 
@@ -34,10 +34,10 @@ class MlpValue(Sequential):
 
 
 class MlpPolicy(Sequential):
-  def __init__(self, dim_obs, dim_action, hidden_units, Linear=Linear):
+  def __init__(self, dim_obs, dim_action, hidden_units):
     super().__init__(
-      Linear(dim_obs, hidden_units), ReLU(),
-      Linear(hidden_units, hidden_units), ReLU(),
+      SacLinear(dim_obs, hidden_units), ReLU(),
+      SacLinear(hidden_units, hidden_units), ReLU(),
       TanhNormalLayer(hidden_units, dim_action)
     )
 
@@ -53,8 +53,6 @@ class Mlp(Module):
   hidden_units: int = 256
   num_critics: int = 2
 
-  Linear: type = Linear
-
   device = 'cpu'
 
   def __post_init__(self, observation_space, action_space):
@@ -62,9 +60,9 @@ class Mlp(Module):
     assert isinstance(observation_space, gym.spaces.Tuple)
     dim_obs = sum(space.shape[0] for space in observation_space)
     dim_action = action_space.shape[0]
-    self.critics = ModuleList(MlpActionValue(dim_obs, dim_action, self.hidden_units, self.Linear) for _ in range(self.num_critics))
-    self.value = MlpValue(dim_obs, dim_action, self.hidden_units, self.Linear)
-    self.actor = MlpPolicy(dim_obs, dim_action, self.hidden_units, self.Linear)
+    self.critics = ModuleList(MlpActionValue(dim_obs, dim_action, self.hidden_units) for _ in range(self.num_critics))
+    self.value = MlpValue(dim_obs, dim_action, self.hidden_units)
+    self.actor = MlpPolicy(dim_obs, dim_action, self.hidden_units)
 
   def to(self, device):
     self.device = device

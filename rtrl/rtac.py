@@ -106,7 +106,7 @@ if __name__ == "__main__":
     epochs=3,
     rounds=5,
     steps=100,
-    Agent=partial(Agent, memory_size=1000000, start_training=256, batchsize=4, Model=partial(Linear=RlkitLinear)),
+    Agent=partial(Agent, memory_size=1000000, start_training=256, batchsize=4),
     # Env=partial(id="Pendulum-v0", real_time=True),
     Env=partial(id="HalfCheetah-v2", real_time=True),
   )
@@ -115,12 +115,12 @@ if __name__ == "__main__":
     Training,
     epochs=3,
     rounds=5,
-    steps=100,
+    steps=300,
     Agent=partial(Agent, device='cpu', lr=0.0001, memory_size=500000, start_training=256, batchsize=4, Model=partial(
       ConvDouble)),
     # Env=partial(id="Pendulum-v0", real_time=True),
     Env=partial(AvenueEnv, real_time=True),
   )
 
-  # run(Rtac_Test)
-  run(Rtac_Avenue_Test)
+  run(Rtac_Test)
+  # run(Rtac_Avenue_Test)

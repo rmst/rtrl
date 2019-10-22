@@ -6,7 +6,7 @@ FROM ${BASE}
 
 WORKDIR /app
 
-#ENV GIT_SSH_COMMAND 'ssh -o "StrictHostKeyChecking no"'
+ENV GIT_SSH_COMMAND 'ssh -o "StrictHostKeyChecking no"'
 
 ARG AVENUE_REV
 RUN --mount=type=ssh git clone git@github.com:elementai/avenue.git avenue \

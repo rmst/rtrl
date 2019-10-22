@@ -120,7 +120,6 @@ RtacAvenueTraining = partial(
   steps=5000,
   Agent=partial(RtacAgent, lr=0.0001, memory_size=500000, start_training=10000, batchsize=100, Model=partial(
     ConvDouble)),
-  # Env=partial(id="Pendulum-v0", real_time=True),
   Env=partial(AvenueEnv, real_time=True),
 )
 

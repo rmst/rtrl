@@ -169,6 +169,14 @@ class RlkitLinear(torch.nn.Linear):
     self.bias.data.fill_(0.1)
 
 
+class SacLinear(torch.nn.Linear):
+  def __init__(self, in_features, out_features):
+    super().__init__(in_features, out_features)
+    with torch.no_grad():
+      self.weight.uniform_(-0.06, 0.06)  # 0.06 == 1 / sqrt(256)
+      self.bias.fill_(0.1)
+
+
 class BasicReLU(torch.nn.Linear):
   def forward(self, x):
     x = super().forward(x)
