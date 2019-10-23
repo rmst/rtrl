@@ -46,11 +46,11 @@ class Agent:
     self.model_target: Agent.Model = no_grad(deepcopy(self.model))
 
     self.policy_optimizer = optim.Adam(self.model.actor.parameters(), lr=self.lr)
-    self.critic_optimizer = optim.Adam(chain(self.model.value.parameters(), *(c.parameters() for c in self.model.critics)), lr=self.lr)
+    self.critic_optimizer = optim.Adam(chain.from_iterable(c.parameters() for c in self.model.critics), lr=self.lr)
     self.memory = SimpleMemory(self.memory_size, self.batchsize, device)
 
-    self.outnorm = self.OutputNorm(dim=1).to(device)
-    self.outnorm_target = self.OutputNorm(dim=1).to(device)
+    self.output_norm = self.OutputNorm(dim=1).to(device)
+    self.output_norm_target = self.OutputNorm(dim=1).to(device)
 
   def act(self, obs, r, done, info, train=False):
     stats = []
@@ -69,59 +69,56 @@ class Agent:
     obs, actions, rewards, next_obs, terminals = self.memory.sample()
     rewards, terminals = rewards[:, None], terminals[:, None]  # expand for correct broadcasting below
 
-    v_pred = self.model.value(obs)
+    new_action_distribution = self.model.actor(obs)
+    new_actions = new_action_distribution.rsample()
 
-    action_distribution = self.model.actor(obs)
-    new_actions = action_distribution.rsample()
-    log_pi = action_distribution.log_prob(new_actions)[:, None]
-    assert log_pi.dim() == 2 and log_pi.shape[1] == 1, "use Independent(Normal(...), 1) instead of Normal(...)"
+    # actor loss
+    new_actions_log_prob = new_action_distribution.log_prob(new_actions)[:, None]
+    assert new_actions_log_prob.dim() == 2 and new_actions_log_prob.shape[1] == 1, "use Independent(Dist(...), 1) instead of Dist(...)"
 
-    # QF Loss
-    target_v_values = self.model_target.value(next_obs)
-    q_target = self.reward_scale * rewards + (1. - terminals) * self.discount * self.outnorm_target.unnormalize(target_v_values)
+    new_action_value = [c(obs, new_actions) for c in self.model.critics]
+    new_action_value = reduce(torch.min, new_action_value)
+    new_action_value = self.output_norm.unnormalize(new_action_value)
 
-    self.outnorm.update(q_target)
-    stats.update(v_mean=float(self.outnorm.m1), v_std=float(self.outnorm.std))
+    loss_actor = self.entropy_scale * new_actions_log_prob.mean() - new_action_value.mean()
+    loss_actor, = self.output_norm.normalize(loss_actor)
+    stats.update(loss_actor=loss_actor.detach())
 
-    q_target = self.outnorm.normalize(q_target)
-    [self.outnorm.update_lin(c[-1]) for c in self.model.critics]
-    self.outnorm.update_lin(self.model.value[-1])
+    # critic loss
+    next_action_distribution = self.model.actor(next_obs)
+    next_actions = next_action_distribution.sample()
+    next_action_value = [c(next_obs, next_actions) for c in self.model_target.critics]
+    next_action_value = reduce(torch.min, next_action_value)
+    next_action_value = next_action_value - next_action_distribution.log_prob(next_actions)[:, None]
+    next_action_value = self.output_norm_target.unnormalize(next_action_value)
+    action_value_target = self.reward_scale * rewards + (1. - terminals) * self.discount * next_action_value
 
-    q_preds = [c(obs, actions) for c in self.model.critics]
-    assert not q_target.requires_grad
-    qf_loss = sum(mse_loss(q_pred, q_target) for q_pred in q_preds)
+    self.output_norm.update(action_value_target)
+    stats.update(v_mean=float(self.output_norm.m1), v_std=float(self.output_norm.std))
+    [self.output_norm.update_lin(c[-1]) for c in self.model.critics]
 
-    stats.update(loss_critic=qf_loss.detach())
+    action_value_target = self.output_norm.normalize(action_value_target)
 
-    # VF Loss
-    q_new_actions_multi = [c(obs, new_actions) for c in self.model.critics]
-    q_new_actions = reduce(torch.min, q_new_actions_multi)
+    action_values = [c(obs, actions) for c in self.model.critics]
+    assert not action_value_target.requires_grad
+    loss_critic = sum(mse_loss(av, action_value_target) for av in action_values)
+    stats.update(loss_critic=loss_critic.detach())
 
-    v_target = self.outnorm.unnormalize(q_new_actions) - self.entropy_scale * log_pi
-    # assert not v_target.requires_grad
-    vf_loss = mse_loss(v_pred, self.outnorm.normalize(v_target.detach()))
-
-    # Update Networks
+    # update actor and critic
     self.critic_optimizer.zero_grad()
-    qf_loss.backward()
-    vf_loss.backward()
+    loss_critic.backward()
     self.critic_optimizer.step()
-    stats.update(loss_value=vf_loss.detach())
-
-    policy_loss = self.entropy_scale * log_pi.mean() - self.outnorm.unnormalize(q_new_actions.mean())
-    policy_loss, = self.outnorm.normalize(policy_loss)
 
     self.policy_optimizer.zero_grad()
-    policy_loss.backward()
+    loss_actor.backward()
     self.policy_optimizer.step()
 
-    stats.update(loss_actor=policy_loss.detach())
-
+    # update target critics and normalizers
     with torch.no_grad():
-      for t, n in zip(self.model_target.parameters(), self.model.parameters()):
+      for t, n in zip(self.model_target.critics.parameters(), self.model.critics.parameters()):
         t.data += (1 - self.polyak) * (n - t)  # equivalent to t = α * t + (1-α) * n
-    self.outnorm_target.m1 = self.polyak * self.outnorm_target.m1 + (1-self.polyak) * self.outnorm.m1
-    self.outnorm_target.std = self.polyak * self.outnorm_target.std + (1 - self.polyak) * self.outnorm.std
+    self.output_norm_target.m1 = self.polyak * self.output_norm_target.m1 + (1 - self.polyak) * self.output_norm.m1
+    self.output_norm_target.std = self.polyak * self.output_norm_target.std + (1 - self.polyak) * self.output_norm.std
 
     self.num_updates += 1
     return dict(stats, memory_size=len(self.memory), updates=self.num_updates)

@@ -77,7 +77,7 @@ class Mlp(ActorModel):
     dim_obs = sum(space.shape[0] for space in observation_space)
     dim_action = action_space.shape[0]
     self.critics = ModuleList(MlpActionValue(dim_obs, dim_action, self.hidden_units) for _ in range(self.num_critics))
-    self.value = MlpValue(dim_obs, dim_action, self.hidden_units)
+    # self.value = MlpValue(dim_obs, dim_action, self.hidden_units)
     self.actor = MlpPolicy(dim_obs, dim_action, self.hidden_units)
 
 
@@ -165,6 +165,7 @@ class ConvModel(ActorModel):
     super().__init__()
     self.actor = ConvActor(observation_space, action_space, hidden_units)
     self.critics = ModuleList(ConvCritic(observation_space, action_space, hidden_units) for _ in range(num_critics))
+    # TODO: value not necessary with new SAC anymore
     self.value = ConvValue(observation_space, action_space, hidden_units)
 
   def act(self, obs, r, done, info, train=False):
