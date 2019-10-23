@@ -216,3 +216,23 @@ Linear04 = partial(AffineReLU, init_bias=0.4)
 LinearConstBias = partial(AffineReLU, init_bias=0.1)
 LinearZeroBias = partial(AffineReLU, init_bias=0.)
 AffineSimon = partial(AffineReLU, init_weight_bound=0.01, init_bias=1.)
+
+
+def dqn_conv(n):
+  return torch.nn.Sequential(
+      torch.nn.Conv2d(n, 32, kernel_size=8, stride=4),
+      torch.nn.ReLU(),
+      torch.nn.Conv2d(32, 64, kernel_size=4, stride=2),
+      torch.nn.ReLU(),
+      torch.nn.Conv2d(64, 64, kernel_size=3, stride=1),
+      torch.nn.ReLU()
+    )
+
+
+def big_conv(n):
+  return torch.nn.Sequential(
+    torch.nn.Conv2d(n, 32, 8, stride=2), torch.nn.LeakyReLU(),
+    torch.nn.Conv2d(32, 32, 4, stride=2), torch.nn.LeakyReLU(),
+    torch.nn.Conv2d(32, 32, 4, stride=2), torch.nn.LeakyReLU(),
+    torch.nn.Conv2d(32, 32, 4, stride=1), torch.nn.LeakyReLU(),
+  )

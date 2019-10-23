@@ -1,5 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass
+from functools import reduce
 
 import rtrl.rtac_models
 import torch
@@ -53,8 +54,8 @@ class Agent(rtrl.sac.Agent):
     _, v2s_target = self.model_target(new_next_obs_tgt)
     _, v2s = self.model_nograd(new_next_obs)
 
-    v2_target, _ = torch.stack(v2s_target, 2).min(2)
-    v2, _ = torch.stack(v2s, 2).min(2)
+    v2_target = reduce(torch.min, v2s_target)
+    v2 = reduce(torch.min, v2s)
 
     v_target = self.reward_scale * rewards
     v_target -= self.entropy_scale * log_pi.detach()

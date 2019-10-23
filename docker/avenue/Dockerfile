@@ -17,5 +17,5 @@ RUN --mount=type=ssh git clone git@github.com:elementai/avenue.git avenue \
 # download Avenue assets
 RUN mkdir /app/avenue_assets
 ENV AVENUE_ASSETS /app/avenue_assets
-RUN python -c 'import avenue; avenue.download("AvenueCar")'
+#RUN python -c 'import avenue; avenue.download("AvenueCar")'
 RUN chmod 777 -R /app/avenue_assets

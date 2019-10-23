@@ -116,8 +116,8 @@ from rtrl.rtac_models import ConvDouble
 RtacAvenueTraining = partial(
   Training,
   epochs=50,
-  rounds=4,
-  steps=5000,
+  rounds=2,
+  steps=10000,
   Agent=partial(RtacAgent, lr=0.0001, memory_size=500000, start_training=10000, batchsize=100, Model=partial(
     ConvDouble)),
   Env=partial(AvenueEnv, real_time=True),

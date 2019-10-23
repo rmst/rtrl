@@ -1,7 +1,7 @@
 from collections import deque
 from copy import deepcopy, copy
 from dataclasses import dataclass, InitVar
-from functools import lru_cache
+from functools import lru_cache, reduce
 from itertools import chain
 
 import rtrl.sac_models
@@ -33,10 +33,11 @@ class Agent:
   entropy_scale: float = 1.
   start_training: int = 10000
   device: str = None
-
+  training_interval: int = 1
   model_nograd = cached_property(lambda self: no_grad(copy_shared(self.model)))
 
   num_updates = 0
+  training_steps = 0
 
   def __post_init__(self, observation_space, action_space):
     device = self.device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -57,10 +58,9 @@ class Agent:
 
     if train:
       self.memory.append(np.float32(r), np.float32(done), info, obs, action)
-      if len(self.memory) >= self.start_training:
-        # TODO: normalize observations and rewards
+      if len(self.memory) >= self.start_training and self.training_steps % self.training_interval:
         stats += self.train(),
-
+      self.training_steps += 1
     return action, stats
 
   def train(self):
@@ -71,8 +71,7 @@ class Agent:
 
     v_pred = self.model.value(obs)
 
-    action_distribution = self.model.actor(obs)  # should include logprob
-    assert isinstance(action_distribution.base_dist, rtrl.nn.TanhNormal)
+    action_distribution = self.model.actor(obs)
     new_actions = action_distribution.rsample()
     log_pi = action_distribution.log_prob(new_actions)[:, None]
     assert log_pi.dim() == 2 and log_pi.shape[1] == 1, "use Independent(Normal(...), 1) instead of Normal(...)"
@@ -96,7 +95,7 @@ class Agent:
 
     # VF Loss
     q_new_actions_multi = [c(obs, new_actions) for c in self.model.critics]
-    q_new_actions, _ = torch.stack(q_new_actions_multi, 2).min(2)
+    q_new_actions = reduce(torch.min, q_new_actions_multi)
 
     v_target = self.outnorm.unnormalize(q_new_actions) - self.entropy_scale * log_pi
     # assert not v_target.requires_grad
@@ -131,32 +130,36 @@ class Agent:
 # === tests ============================================================================================================
 def test_agent():
   from rtrl import partial, Training, run
-
   Sac_Test = partial(
     Training,
     epochs=3,
     rounds=5,
     steps=100,
     Agent=partial(Agent, memory_size=1000000, start_training=256, batchsize=4),
-    Env=partial(id="Pendulum-v0"),
+    Env=partial(id="Pendulum-v0", real_time=0),
   )
   run(Sac_Test)
 
 
-def test_agent_realtime():
+def test_agent_avenue():
   from rtrl import partial, Training, run
-
-  Sac_Test = partial(
+  from rtrl.envs import AvenueEnv
+  from rtrl.sac_models import ConvModel
+  Sac_Avenue_Test = partial(
     Training,
     epochs=3,
     rounds=5,
-    steps=100,
-    Agent=partial(Agent, memory_size=1000000, start_training=256, batchsize=4),
-    Env=partial(id="Pendulum-v0", real_time=1),
+    steps=300,
+    Agent=partial(
+      Agent, device='cpu', training_interval=4, lr=0.0001, memory_size=200000,
+      start_training=10000, batchsize=100, Model=partial(
+        ConvModel)),
+    # Env=partial(id="Pendulum-v0", real_time=True),
+    Env=partial(AvenueEnv, real_time=0),
   )
-  run(Sac_Test)
+  run(Sac_Avenue_Test)
 
 
 if __name__ == "__main__":
-  # test_agent()
-  test_agent_realtime()
+  test_agent()
+  # test_agent_avenue()

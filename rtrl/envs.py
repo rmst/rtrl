@@ -36,17 +36,29 @@ def normalize_half_cheetah(env):
   return env
 
 
-@dataclass(eq=0)
-class GymEnv(gym.Wrapper):
-  seed_val: InitVar[int]  # the name seed is already taken by the gym.Env.seed function
-  id: str = "Pendulum-v0"
-  real_time: bool = False
-  normalize: bool = False
+class Env(gym.Wrapper):
+  def __init__(self, env):
+    super().__init__(env)
+    self.transition = (self.reset(), 0., True, {})
 
-  def __post_init__(self, seed_val):
-    env = gym.make(self.id)
-    if self.normalize:
-      assert self.id.startswith("HalfCheetah")
+  def reset(self):
+    return self.observation(self.env.reset())
+
+  def step(self, action):
+    next_state, reward, done, info = self.env.step(action)
+    next_state = self.reset() if done else self.observation(next_state)
+    self.transition = next_state, reward, done, info
+    return self.transition
+
+  def observation(self, observation):
+    return observation
+
+
+class GymEnv(Env):
+  def __init__(self, seed_val=0, id: str = "Pendulum-v0", real_time: bool = False, normalize: bool = False):
+    env = gym.make(id)
+    if normalize:
+      assert id.startswith("HalfCheetah")
       env = normalize_half_cheetah(env)
       # env = AffineObservationWrapper(env, 0., 0.1)
 
@@ -56,7 +68,7 @@ class GymEnv(gym.Wrapper):
     assert isinstance(env.action_space, gym.spaces.Box)
     env = NormalizeActionWrapper(env)
     # env = DictActionWrapper(env)
-    if self.real_time:
+    if real_time:
       env = RealTimeWrapper(env)
     else:
       env = TupleObservationWrapper(env)
@@ -65,8 +77,8 @@ class GymEnv(gym.Wrapper):
     self.seed(seed_val)
 
 
-class AvenueEnv(gym.ObservationWrapper):
-  def __init__(self, seed_val, id: str = "LaneFollowingTrack", real_time: bool = False):
+class AvenueEnv(Env):
+  def __init__(self, seed_val=0, id: str = "LaneFollowingTrack", real_time: bool = False):
     pretend_cpus = os.getenv('PRETEND_CPUS')
     if pretend_cpus:
       os.environ['PRETEND_CPUS'] = "1"

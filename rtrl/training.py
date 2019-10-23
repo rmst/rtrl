@@ -22,54 +22,48 @@ class Training:
   seed: int = 0
   epochs: int = 50
 
-  # we use cached_property because we don't want to save these attributes to file
-  env = cached_property(lambda self: StatsWrapper(self.Env(seed_val=self.seed + self.epoch), window=self.steps))
-  last_transition = cached_property(lambda self: (None, 0., True, dict(reset=True)))
-
   def __post_init__(self):
     self.epoch = 0
-    # print("Environment:", self.env)
-    # noinspection PyArgumentList
-    self.agent = self.Agent(self.env.observation_space, self.env.action_space)
+
+    with self.Env() as env:
+      # print("Environment:", self.env)
+      # noinspection PyArgumentList
+      self.agent = self.Agent(env.observation_space, env.action_space)
 
   def run_epoch(self):
     stats = []
-
-    for rnd in range(self.rounds):
-      print(f"=== epoch {self.epoch}/{self.epochs} ".ljust(20, '=') + f" round {rnd}/{self.rounds} ".ljust(50, '='))
-      t0 = pd.Timestamp.utcnow()
-      stats_training = []
-
-      # test runs in parallel to the training process
-      # noinspection PyArgumentList
-      test = self.Test(
-        Env=self.Env,
-        actor=deepcopy(self.agent.model),
-        steps=self.steps * self.rounds,
-        base_seed=self.seed + self.epochs
-      )
-
-      for step in range(self.steps):
-        obs, r, done, info = self.last_transition
-
-        if done:
-          obs = self.env.reset()
-
-        action, training_stats = self.agent.act(obs, r, done, info, train=True)
-        stats_training += training_stats
-
-        self.last_transition = self.env.step(action)
-
-      stats += pandas_dict(**self.env.stats(),
-                           round_time=Timestamp.utcnow() - t0,
-                           **test.stats().add_suffix("_test"),  # this blocks until the tests have finished
-                           round_time_total=Timestamp.utcnow() - t0,
-                           **DataFrame(stats_training).mean(skipna=True)),  # appending to stats
-
-      print(stats[-1].add_prefix("  ").to_string(), '\n')
+    with StatsWrapper(self.Env(seed_val=self.seed + self.epoch), window=self.steps) as env:
+      for rnd in range(self.rounds):
+        print(f"=== epoch {self.epoch}/{self.epochs} ".ljust(20, '=') + f" round {rnd}/{self.rounds} ".ljust(50, '='))
+        stats += self.run_round(env),
+        print(stats[-1].add_prefix("  ").to_string(), '\n')
 
     self.epoch += 1
     return stats
 
-  def __del__(self):
-    self.env.close()
+  def run_round(self, env):
+    t0 = pd.Timestamp.utcnow()
+    stats_training = []
+
+    # test runs in parallel to the training process
+    # noinspection PyArgumentList
+
+    test = self.Test(
+      Env=self.Env,
+      actor=deepcopy(self.agent.model),
+      steps=self.steps * self.rounds,
+      base_seed=self.seed + self.epochs
+    )
+
+    for step in range(self.steps):
+      action, training_stats = self.agent.act(*env.transition, train=True)
+      stats_training += training_stats
+      env.step(action)
+
+    return pandas_dict(
+      **env.stats(),
+      round_time=Timestamp.utcnow() - t0,
+      **test.stats().add_suffix("_test"),  # this blocks until the tests have finished
+      round_time_total=Timestamp.utcnow() - t0,
+      **DataFrame(stats_training).mean(skipna=True)
+    )

@@ -31,19 +31,13 @@ class Test:
   def run(self, number=0):
     t0 = pd.Timestamp.utcnow()
     env = self.Env(seed_val=self.base_seed + number)
-    env = StatsWrapper(env, window=self.steps)
-    try:
-      obs, r, done, info = None, 0., True, {}
+    with StatsWrapper(env, window=self.steps) as env:
       for step in range(self.steps):
-        if done:
-          obs = env.reset()
-        action, stats = self.actor.act(obs, r, done, info)
+        action, stats = self.actor.act(*env.transition)
         # action = env.action_space.sample()
-        obs, r, done, info = env.step(action)
+        env.step(action)
 
       return pandas_dict(env.stats(), round_time=pd.Timestamp.utcnow() - t0)
-    finally:
-      env.close()
 
   def stats(self):
     st = self.result_handle.get()

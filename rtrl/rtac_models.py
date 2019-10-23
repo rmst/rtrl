@@ -3,7 +3,7 @@ from dataclasses import dataclass, InitVar
 import gym
 import torch
 from rtrl.memory import collate, partition
-from rtrl.nn import TanhNormalLayer, SacLinear
+from rtrl.nn import TanhNormalLayer, SacLinear, big_conv
 from torch.nn import Module, Linear, Sequential, ReLU, Conv2d, LeakyReLU
 from torch.nn.functional import leaky_relu
 
@@ -130,10 +130,43 @@ class ConvRTAC(Module):
     return action_distribution, (v,)
 
 
-def big_conv(n):
-  return Sequential(
-    Conv2d(n, 32, 8, stride=2), LeakyReLU(),
-    Conv2d(32, 32, 4, stride=2), LeakyReLU(),
-    Conv2d(32, 32, 4, stride=2), LeakyReLU(),
-    Conv2d(32, 32, 4, stride=1), LeakyReLU(),
-  )
+
+
+
+#
+#
+# class SeparateRT(nn.Module):
+#   class HL(Mlp.HL):
+#     class L(RlkitHiddenLinear): pass
+#
+#   class LCL(agents.nn.Linear):
+#     pass
+#
+#   class LPL(TanhNormalLayer): pass
+#
+#   hidden_units: int = 256
+#   num_critics: int = 1
+#
+#   def __init__(self, ob_space, a_space, **kwargs):
+#     super().__init__()
+#
+#     apply_kwargs(self, kwargs)
+#     s = STATE({k: v.shape for k, v in ob_space.spaces.items()})
+#     self.dim_obs = s.s[0] + (s.a[0] if s.a is not None else 0)
+#     self.a_space = a_space
+#
+#     self.critic = nn.Sequential(self.HL(self.dim_obs, self.hidden_units),
+#                                 self.HL(self.hidden_units, self.hidden_units),
+#                                 self.LCL(self.hidden_units, self.num_critics))
+#
+#     self.actor = nn.Sequential(self.HL(self.dim_obs, self.hidden_units),
+#                                self.HL(self.hidden_units, self.hidden_units),
+#                                self.LPL(self.hidden_units, self.a_space.shape[0]))
+#     self.v_out = (self.critic[-1],)
+#
+#   def forward(self, x):
+#     v = self.critic(x.s)
+#     a = self.actor(x.s)
+#     return (a, None), tuple(v[:, i:i + 1] for i in range(self.num_critics))
+#
+#
