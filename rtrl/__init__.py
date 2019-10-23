@@ -1,4 +1,5 @@
 import atexit
+import gc
 import json
 import os
 import shutil
@@ -43,6 +44,8 @@ def iterate_episodes(run_cls: type = Training, checkpoint_path: str = None):
       dump(run_instance, checkpoint_path)
       if run_instance.epoch == run_instance.epochs:
         break
+      del run_instance
+      gc.collect()
   finally:
     if checkpoint_path.endswith("_remove_on_exit") and exists(checkpoint_path):
       os.remove(checkpoint_path)
