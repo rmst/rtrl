@@ -22,6 +22,6 @@ if cmd == "run":
 elif cmd == "run_fs":
   run_fs(args[0], parse_args(*args[1:]))
 elif cmd == "run_wandb":
-  run_wandb(args[0], args[1], args[2], args[3], parse_args(args[4:]))
+  run_wandb(args[0], args[1], args[2], parse_args(args[4:]), args[3])
 else:
   raise AttributeError("Undefined command: " + cmd)
