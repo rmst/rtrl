@@ -183,15 +183,17 @@ class DelayInterrupt:
     # something that shouldn't be interrupted ...
   """
   signal_received = False
+  signals = (signal.SIGINT, signal.SIGTERM)
 
   def __enter__(self):
-    signal.signal(signal.SIGINT, self.on_signal)
-    signal.signal(signal.SIGTERM, self.on_signal)
+    self.default_handlers = [signal.getsignal(s) for s in self.signals]
+    [signal.signal(s, self.on_signal) for s in self.signals]
 
   def on_signal(self, *args):
     print("rtrl.util:DelayInterrupt -- Signal received!", *args)
     self.signal_received = True
 
   def __exit__(self, *args):
+    [signal.signal(s, d) for s, d in zip(self.signals, self.default_handlers)]
     if self.signal_received:
       raise KeyboardInterrupt()

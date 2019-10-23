@@ -43,8 +43,12 @@ def iterate_episodes(run_cls: type = Training, checkpoint_path: str = None):
       yield run_instance.run_epoch()  # yield stats data frame (this makes this function a generator)
       print("")
       dump(run_instance, checkpoint_path)
+
+      # we delete and reload the run_instance from disk to ensure the exact same code runs regardless of interruptions
       del run_instance
       gc.collect()
+      run_instance = load(checkpoint_path)
+
   finally:
     if checkpoint_path.endswith("_remove_on_exit") and exists(checkpoint_path):
       os.remove(checkpoint_path)
