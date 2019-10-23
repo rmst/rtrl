@@ -89,8 +89,8 @@ class Agent:
     next_actions = next_action_distribution.sample()
     next_action_value = [c(next_obs, next_actions) for c in self.model_target.critics]
     next_action_value = reduce(torch.min, next_action_value)
-    next_action_value = next_action_value - next_action_distribution.log_prob(next_actions)[:, None]
     next_action_value = self.output_norm_target.unnormalize(next_action_value)
+    next_action_value = next_action_value - next_action_distribution.log_prob(next_actions)[:, None]
     action_value_target = self.reward_scale * rewards + (1. - terminals) * self.discount * next_action_value
 
     self.output_norm.update(action_value_target)

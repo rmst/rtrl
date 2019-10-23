@@ -24,9 +24,8 @@ class Test:
     self.result_handle = self.pool.map_async(self.run, range(self.number))
 
   def __getstate__(self):
-    x = shallow_copy(self)
-    del x.pool, x.result_handle  # instances of mp.Pool, etc. cannot be shared between processes
-    return vars(x)
+    # instances of mp.Pool, etc. cannot be shared between processes
+    return {k: v for k, v in vars(self).items() if k not in ('pool', 'result_handle')}
 
   def run(self, number=0):
     t0 = pd.Timestamp.utcnow()

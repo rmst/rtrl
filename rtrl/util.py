@@ -9,7 +9,7 @@ import weakref
 from dataclasses import is_dataclass, dataclass, make_dataclass, fields, Field
 from importlib import import_module
 from itertools import chain
-from typing import TypeVar, Union, Type, Callable, Any
+from typing import TypeVar, Union, Type, Callable, Any, Dict
 from weakref import WeakKeyDictionary
 
 import pandas as pd
@@ -84,9 +84,29 @@ def partial_from_dict(d: dict):
   d = d.copy()
   assert d.pop("__format_version__", "3") == "3"
   d = {k: partial_from_dict(v) if isinstance(v, dict) and FKEY in v else v for k, v in d.items()}
-  module, name = (d.pop(FKEY) or "rtrl.util:default").split(":")
-  func = getattr(import_module(module), name)
+  func = get_class_or_function(d.pop(FKEY) or "rtrl.util:default")
   return partial(func, **d)
+
+
+def get_class_or_function(func):
+  module, name = func.split(":")
+  return getattr(import_module(module), name)
+
+
+def partial_from_args(func: Union[str, callable], kwargs: Dict[str, str]):
+  # print(func, kwargs)  # useful to visualize the parsing process
+  func = get_class_or_function(func) if isinstance(func, str) else func
+  keys = {k.split('.')[0] for k in kwargs}
+  keywords = {}
+  for key in keys:
+    param = inspect.signature(func).parameters[key]
+    value = kwargs.get(key, param.default)
+    if param.annotation is type:
+      sub_keywords = {k.split('.', 1)[1]: v for k, v in kwargs.items() if k.startswith(key + '.')}
+      keywords[key] = partial_from_args(value, sub_keywords)
+    else:
+      keywords[key] = param.annotation(value)
+  return partial(func, **keywords)
 
 
 # === serialization ====================================================================================================
