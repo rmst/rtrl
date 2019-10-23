@@ -58,7 +58,7 @@ class Agent:
 
     if train:
       self.memory.append(np.float32(r), np.float32(done), info, obs, action)
-      if len(self.memory) >= self.start_training and self.training_steps % self.training_interval:
+      if len(self.memory) >= self.start_training and self.training_steps % self.training_interval == 0:
         stats += self.train(),
       self.training_steps += 1
     return action, stats
@@ -85,7 +85,7 @@ class Agent:
     stats.update(loss_actor=loss_actor.detach())
 
     # critic loss
-    next_action_distribution = self.model.actor(next_obs)
+    next_action_distribution = self.model_nograd.actor(next_obs)
     next_actions = next_action_distribution.sample()
     next_action_value = [c(next_obs, next_actions) for c in self.model_target.critics]
     next_action_value = reduce(torch.min, next_action_value)
