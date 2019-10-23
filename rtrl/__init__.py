@@ -13,7 +13,8 @@ import pandas as pd
 import yaml
 
 from rtrl.envs import AvenueEnv
-from rtrl.util import partial, save_json, partial_to_dict, partial_from_dict, load_json, dump, load, git_info
+from rtrl.util import partial, save_json, partial_to_dict, partial_from_dict, load_json, dump, load, git_info, \
+  DelayInterrupt
 from rtrl.training import Training
 from rtrl.rtac import Agent as RtacAgent
 
@@ -36,14 +37,12 @@ def iterate_episodes(run_cls: type = Training, checkpoint_path: str = None):
     else:
       print("\ncontinuing...\n")
 
-    while True:
-      time.sleep(1)  # on network file systems writing files is asynchronous and we need to wait for sync
-      run_instance = load(checkpoint_path)
+    run_instance = load(checkpoint_path)
+    while run_instance.epoch < run_instance.epochs:
+      # time.sleep(1)  # on network file systems writing files is asynchronous and we need to wait for sync
       yield run_instance.run_epoch()  # yield stats data frame (this makes this function a generator)
       print("")
       dump(run_instance, checkpoint_path)
-      if run_instance.epoch == run_instance.epochs:
-        break
       del run_instance
       gc.collect()
   finally:

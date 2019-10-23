@@ -4,8 +4,10 @@ import io
 import json
 import os
 import pickle
+import signal
 import subprocess
 import weakref
+from contextlib import contextmanager
 from dataclasses import is_dataclass, dataclass, make_dataclass, fields, Field
 from importlib import import_module
 from itertools import chain
@@ -111,8 +113,9 @@ def partial_from_args(func: Union[str, callable], kwargs: Dict[str, str]):
 
 # === serialization ====================================================================================================
 def dump(obj, path):
-  with open(path, 'wb') as f:
-    return pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+  with DelayInterrupt():  # Continue to save even if SIGINT or SIGTERM is sent and raise KeyboardInterrupt afterwards.
+    with open(path, 'wb') as f:
+      return pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
 
 def load(path):
@@ -170,3 +173,25 @@ def git_info(path=None):
     url = url[:len('.git')] + '/commit/' + rev
 
   return dict(url=url, rev=rev, count=count, status=status, desc=desc, date=commit_date, message=message)
+
+
+# === signal handling ==================================================================================================
+
+class DelayInterrupt:
+  """Catches SIGINT and SIGTERM and re-raises them after the context manager exits. E.g.:
+  with DelayInterrupt():
+    # something that shouldn't be interrupted ...
+  """
+  signal_received = False
+
+  def __enter__(self):
+    signal.signal(signal.SIGINT, self.on_signal)
+    signal.signal(signal.SIGTERM, self.on_signal)
+
+  def on_signal(self, *args):
+    print("rtrl.util:DelayInterrupt -- Signal received!", *args)
+    self.signal_received = True
+
+  def __exit__(self, *args):
+    if self.signal_received:
+      raise KeyboardInterrupt()
