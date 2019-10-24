@@ -48,8 +48,8 @@ class Agent:
     self.critic_optimizer = torch.optim.Adam(self.model.critics.parameters(), lr=self.lr)
     self.memory = Memory(self.memory_size, self.batchsize, device)
 
-    self.outputnorm: PopArt = PopArt(self.model.value_layers, self.output_norm_update)
-    self.outputnorm_target: PopArt = PopArt(self.model_target.value_layers, self.output_norm_update)
+    self.outputnorm: PopArt = PopArt(self.model.critic_output_layers, self.output_norm_update)
+    self.outputnorm_target: PopArt = PopArt(self.model_target.critic_output_layers, self.output_norm_update)
 
   def act(self, obs, r, done, info, train=False):
     stats = []
@@ -142,12 +142,12 @@ def test_agent_avenue():
       Agent, device='cpu', training_interval=4, lr=0.0001, memory_size=200000,
       start_training=10000, batchsize=100, Model=partial(
         ConvModel)),
-    # Env=partial(id="Pendulum-v0", real_time=True),
     Env=partial(AvenueEnv, real_time=0),
+    Test=partial(number=1),  # laptop can't handle more than that
   )
   run(Sac_Avenue_Test)
 
 
 if __name__ == "__main__":
-  test_agent()
-  # test_agent_avenue()
+  # test_agent()
+  test_agent_avenue()

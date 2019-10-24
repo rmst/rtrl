@@ -60,7 +60,6 @@ class Mlp(ActorModule):
     dim_obs = sum(space.shape[0] for space in observation_space)
     dim_action = action_space.shape[0]
     self.critics = ModuleList(MlpActionValue(dim_obs, dim_action, hidden_units) for _ in range(num_critics))
-    # self.value = MlpValue(dim_obs, dim_action, self.hidden_units)
     self.actor = MlpPolicy(dim_obs, dim_action, hidden_units)
     self.critic_output_layers = [c[-1] for c in self.critics]
 
@@ -77,7 +76,6 @@ class ConvActor(Module):
       conv_size = self.conv(torch.zeros((1, *img_sp.shape))).view(1, -1).size(1)
 
     self.lin1 = torch.nn.Linear(conv_size + vec_sp.shape[0] + sum(sp.shape[0] for sp in aux), hidden_units)
-    # self.lin2 = nn.Linear(hidden_units, a_space.shape[0])
     self.output_layer = TanhNormalLayer(hidden_units, action_space.shape[0])
 
   def forward(self, observation):
@@ -103,7 +101,6 @@ class ConvCritic(Module):
     self.net = Sequential(
       torch.nn.Linear(conv_size + vec_sp.shape[0] + sum(sp.shape[0] for sp in aux) + action_space.shape[0], hidden_units),
       torch.nn.LeakyReLU(),
-      # torch.nn.Linear(hidden_units, a_space.shape[0]), torch.nn.LeakyReLU(),
       torch.nn.Linear(hidden_units, 1)
     )
 
@@ -125,7 +122,6 @@ class ConvModel(ActorModule):
     super().__init__()
     self.actor = ConvActor(observation_space, action_space, hidden_units)
     self.critics = ModuleList(ConvCritic(observation_space, action_space, hidden_units) for _ in range(num_critics))
-    # self.value = ConvValue(observation_space, action_space, hidden_units)
     self.critic_output_layers = [c[-1] for c in self.critics]
 
 
