@@ -106,8 +106,8 @@ if __name__ == "__main__":
     Training,
     epochs=3,
     rounds=5,
-    steps=100,
-    Agent=partial(Agent, memory_size=1000000, start_training=256, batchsize=4),
+    steps=500,
+    Agent=partial(Agent, device='cpu', memory_size=1000000, start_training=256, batchsize=4),
     # Env=partial(id="Pendulum-v0", real_time=True),
     Env=partial(id="HalfCheetah-v2", real_time=True),
   )
@@ -121,7 +121,8 @@ if __name__ == "__main__":
       ConvDouble)),
     # Env=partial(id="Pendulum-v0", real_time=True),
     Env=partial(AvenueEnv, real_time=True),
+    Test=partial(number=1),  # laptop can't handle more than that
   )
 
-  # run(Rtac_Test)
-  run(Rtac_Avenue_Test)
+  run(Rtac_Test)
+  # run(Rtac_Avenue_Test)

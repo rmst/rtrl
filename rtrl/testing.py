@@ -11,9 +11,9 @@ from rtrl.wrappers import StatsWrapper
 
 
 class Test:
-  def __init__(self, number: int = 1, workers: int = 1, **kwargs):
+  def __init__(self, number: int = 2, **kwargs):
     # Note: It is important that we `spawn` here. Using the default `fork`, will cause Pytorch 1.2 to lock up because it uses a buggy OpenMPI implementation (libgomp). Olexa Bilaniuk at Mila helped us figure this out.
-    self.pool = mp.get_context('spawn').Pool(workers)
+    self.pool = mp.get_context('spawn').Pool(number)
     self.result_handle = self.pool.map_async(partial(run_test, **kwargs), range(number))
 
   def stats(self):
