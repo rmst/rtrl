@@ -2,7 +2,6 @@ from copy import deepcopy
 from dataclasses import dataclass
 from functools import reduce
 
-import rtrl.rtac_models
 import torch
 from rtrl.envs import AvenueEnv
 from torch.nn.functional import mse_loss
@@ -10,6 +9,8 @@ from torch.nn.functional import mse_loss
 import rtrl.sac
 from rtrl.memory import Memory
 from rtrl.nn import no_grad, exponential_moving_average, PopArt
+from rtrl.util import partial
+from rtrl.rtac_models import ConvRTAC, ConvDouble
 
 
 @dataclass(eq=0)
@@ -61,7 +62,7 @@ class Agent(rtrl.sac.Agent):
 
     # update model
     self.optimizer.zero_grad()
-    loss_total = self.loss_alpha * loss_actor + (1-self.loss_alpha) * loss_critic
+    loss_total = self.loss_alpha * loss_actor + (1 - self.loss_alpha) * loss_critic
     loss_total.backward()
     self.optimizer.step()
 
@@ -80,10 +81,20 @@ class Agent(rtrl.sac.Agent):
     )
 
 
+AvenueAgent = partial(
+  Agent,
+  lr=0.0001,
+  memory_size=200000,
+  batchsize=100,
+  training_interval=4,
+  start_training=10000,
+  Model=partial(ConvDouble)
+)
+
+
 if __name__ == "__main__":
-  from rtrl import partial, Training, run
-  from rtrl.nn import RlkitLinear
-  from rtrl.rtac_models import ConvRTAC, ConvDouble
+  from rtrl import Training, run
+
   Rtac_Test = partial(
     Training,
     epochs=3,
@@ -99,9 +110,7 @@ if __name__ == "__main__":
     epochs=3,
     rounds=5,
     steps=300,
-    Agent=partial(Agent, device='cpu', lr=0.0001, memory_size=500000, start_training=256, batchsize=4, Model=partial(
-      ConvDouble)),
-    # Env=partial(id="Pendulum-v0", real_time=True),
+    Agent=partial(AvenueAgent, device='cpu', start_training=256, batchsize=4),
     Env=partial(AvenueEnv, real_time=True),
     Test=partial(number=1),  # laptop can't handle more than that
   )

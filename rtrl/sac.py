@@ -3,16 +3,16 @@ from copy import deepcopy, copy
 from dataclasses import dataclass, InitVar
 from functools import lru_cache, reduce
 from itertools import chain
-
-import rtrl.sac_models
+import numpy as np
 import torch
 from torch.nn.functional import mse_loss
+
 
 import rtrl.nn
 from rtrl.memory import Memory
 from rtrl.nn import PopArt, no_grad, copy_shared, exponential_moving_average
-from rtrl.util import cached_property
-import numpy as np
+from rtrl.util import cached_property, partial
+import rtrl.sac_models
 
 
 @dataclass(eq=0)
@@ -115,9 +115,20 @@ class Agent:
     )
 
 
+AvenueAgent = partial(
+  Agent,
+  lr=0.0001,
+  memory_size=200000,
+  batchsize=100,
+  training_interval=4,
+  start_training=10000,
+  Model=partial(rtrl.sac_models.ConvModel)
+)
+
+
 # === tests ============================================================================================================
 def test_agent():
-  from rtrl import partial, Training, run
+  from rtrl import Training, run
   Sac_Test = partial(
     Training,
     epochs=3,
@@ -130,18 +141,14 @@ def test_agent():
 
 
 def test_agent_avenue():
-  from rtrl import partial, Training, run
+  from rtrl import Training, run
   from rtrl.envs import AvenueEnv
-  from rtrl.sac_models import ConvModel
   Sac_Avenue_Test = partial(
     Training,
     epochs=3,
     rounds=5,
     steps=300,
-    Agent=partial(
-      Agent, device='cpu', training_interval=4, lr=0.0001, memory_size=200000,
-      start_training=10000, batchsize=100, Model=partial(
-        ConvModel)),
+    Agent=partial(AvenueAgent, device='cpu', training_interval=4, start_training=400),
     Env=partial(AvenueEnv, real_time=0),
     Test=partial(number=1),  # laptop can't handle more than that
   )

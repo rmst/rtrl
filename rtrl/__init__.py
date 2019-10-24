@@ -13,11 +13,10 @@ import pandas as pd
 import yaml
 
 from rtrl.envs import AvenueEnv
-from rtrl.util import partial, save_json, partial_to_dict, partial_from_dict, load_json, dump, load, git_info, \
-  DelayInterrupt
+from rtrl.util import partial, save_json, partial_to_dict, partial_from_dict, load_json, dump, load, git_info
 from rtrl.training import Training
-from rtrl.rtac import Agent as RtacAgent
-from rtrl.sac import Agent as SacAgent
+import rtrl.rtac
+import rtrl.sac
 
 
 def iterate_episodes(run_cls: type = Training, checkpoint_path: str = None):
@@ -109,25 +108,29 @@ TestTraining = partial(
 
 SacTraining = partial(
   Training,
-  Agent=partial(SacAgent),
+  Agent=partial(rtrl.sac.Agent),
   Env=partial(id="Pendulum-v0"),
 )
 
 RtacTraining = partial(
   Training,
-  Agent=partial(RtacAgent),
+  Agent=partial(rtrl.sac.Agent),
   Env=partial(id="Pendulum-v0", real_time=True),
 )
 
-from rtrl.rtac_models import ConvDouble
+SacAvenueTraining = partial(
+  Training,
+  Agent=partial(rtrl.sac.AvenueAgent),
+  Env=partial(AvenueEnv, real_time=False),
+)
+
 RtacAvenueTraining = partial(
   Training,
   # epochs=10,
   # rounds=50,
   # steps=2000,
   # test_rounds=1,
-  Agent=partial(RtacAgent, lr=0.0001, training_interval=4, memory_size=200000, start_training=10000, batchsize=100, Model=partial(
-    ConvDouble)),
+  Agent=partial(rtrl.rtac.AvenueAgent),
   Env=partial(AvenueEnv, real_time=True),
 )
 
