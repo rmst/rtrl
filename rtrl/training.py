@@ -19,12 +19,11 @@ class Training:
   Agent: type = rtrl.sac.Agent
   steps: int = 2000  # number of steps per round
   rounds: int = 10  # number of rounds per epoch
-  seed: int = 0
   epochs: int = 50
+  seed: int = 0  # seed is currently not used
 
   def __post_init__(self):
     self.epoch = 0
-
     with self.Env() as env:
       # print("Environment:", self.env)
       # noinspection PyArgumentList

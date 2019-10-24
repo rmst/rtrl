@@ -74,7 +74,7 @@ class GymEnv(Env):
       env = TupleObservationWrapper(env)
 
     super().__init__(env)
-    self.seed(seed_val)
+    # self.seed(seed_val)
 
 
 class AvenueEnv(Env):
@@ -101,7 +101,7 @@ class AvenueEnv(Env):
     (img_sp, vec_sp), *more = env.observation_space
     img_sp = gym.spaces.Box(img_sp.low.transpose(2, 0, 1), img_sp.high.transpose(2, 0, 1), dtype=img_sp.dtype)
     self.observation_space = gym.spaces.Tuple((gym.spaces.Tuple((img_sp, vec_sp)), *more))
-    self.seed(seed_val)
+    # self.seed(seed_val)
 
   def observation(self, observation):
     (img, vec), *more = observation
