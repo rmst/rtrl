@@ -80,6 +80,7 @@ class ConvActor(Module):
 
   def forward(self, observation):
     (x, vec), *aux = observation
+    x = x.type(torch.float32)
     x = x / 255 - 0.5
     x = self.conv(x)
     x = x.view(x.size(0), -1)
@@ -109,6 +110,7 @@ class ConvCritic(Module):
 
   def forward(self, observation, a):
     (x, vec), *aux = observation
+    x = x.type(torch.float32)
     x = x / 255 - 0.5
     x = self.conv(x)
     x = x.view(x.size(0), -1)
