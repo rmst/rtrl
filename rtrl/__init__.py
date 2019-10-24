@@ -17,6 +17,7 @@ from rtrl.util import partial, save_json, partial_to_dict, partial_from_dict, lo
   DelayInterrupt
 from rtrl.training import Training
 from rtrl.rtac import Agent as RtacAgent
+from rtrl.sac import Agent as SacAgent
 
 
 def iterate_episodes(run_cls: type = Training, checkpoint_path: str = None):
@@ -91,7 +92,7 @@ def run_fs(path: str, run_cls: type = Training):
 
 # === specifications ===================================================================================================
 
-MjTest = partial(
+TestTraining = partial(
   Training,
   epochs=3,
   rounds=5,
@@ -100,21 +101,21 @@ MjTest = partial(
   Env=partial(id="Pendulum-v0"),
 )
 
-SimpleTraining = partial(
-  Training,
-  Agent=partial(memory_size=1000000),
-  Env=partial(id="Pendulum-v0"),
-)
+# SimpleTraining = partial(
+#   Training,
+#   Agent=partial(memory_size=1000000),
+#   Env=partial(id="Pendulum-v0"),
+# )
 
-MjTraining = partial(
+SacTraining = partial(
   Training,
-  Agent=partial(memory_size=1000000),
-  Env=partial(id='Walker2d-v2'),
+  Agent=partial(SacAgent),
+  Env=partial(id="Pendulum-v0"),
 )
 
 RtacTraining = partial(
   Training,
-  Agent=partial(RtacAgent, memory_size=1000000),
+  Agent=partial(RtacAgent),
   Env=partial(id="Pendulum-v0", real_time=True),
 )
 
@@ -125,7 +126,7 @@ RtacAvenueTraining = partial(
   # rounds=50,
   # steps=2000,
   # test_rounds=1,
-  Agent=partial(RtacAgent, lr=0.0001, training_interval=4, memory_size=500000, start_training=10000, batchsize=100, Model=partial(
+  Agent=partial(RtacAgent, lr=0.0001, training_interval=4, memory_size=200000, start_training=10000, batchsize=100, Model=partial(
     ConvDouble)),
   Env=partial(AvenueEnv, real_time=True),
 )
@@ -133,4 +134,4 @@ RtacAvenueTraining = partial(
 
 # === tests ============================================================================================================
 if __name__ == "__main__":
-  run(SimpleTraining)
+  run(TestTraining)
