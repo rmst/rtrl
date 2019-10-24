@@ -6,13 +6,12 @@ from itertools import chain
 
 import rtrl.sac_models
 import torch
-from torch import optim
 from torch.nn.functional import mse_loss
 
 import rtrl.nn
-from rtrl.memory import SimpleMemory, collate, partition
-from rtrl.nn import PopArt, no_grad, copy_shared
-from rtrl.util import shallow_copy, cached_property
+from rtrl.memory import Memory
+from rtrl.nn import PopArt, no_grad, copy_shared, exponential_moving_average
+from rtrl.util import cached_property
 import numpy as np
 
 
@@ -20,20 +19,20 @@ import numpy as np
 class Agent:
   observation_space: InitVar
   action_space: InitVar
-  Model: type = rtrl.sac_models.Mlp
-  OutputNorm: type = PopArt
 
+  Model: type = rtrl.sac_models.Mlp
   batchsize: int = 256  # training batch size
   memory_size: int = 1000000  # replay memory size
-  lr: float = 0.0003
-  discount: float = 0.99
-  polyak: float = 0.995  # = 1 - 0.005
-  keep_reset_transitions: int = 0
+  lr: float = 0.0003  # learning rate
+  discount: float = 0.99  # reward discount factor
+  target_update: float = 0.005  # parameter for exponential moving average
+  output_norm_update: float = 0.0003  # parameter for output normalization
   reward_scale: float = 5.
   entropy_scale: float = 1.
   start_training: int = 10000
   device: str = None
   training_interval: int = 1
+
   model_nograd = cached_property(lambda self: no_grad(copy_shared(self.model)))
 
   num_updates = 0
@@ -45,12 +44,12 @@ class Agent:
     self.model: Agent.Model = model.to(device)
     self.model_target: Agent.Model = no_grad(deepcopy(self.model))
 
-    self.policy_optimizer = optim.Adam(self.model.actor.parameters(), lr=self.lr)
-    self.critic_optimizer = optim.Adam(chain.from_iterable(c.parameters() for c in self.model.critics), lr=self.lr)
-    self.memory = SimpleMemory(self.memory_size, self.batchsize, device)
+    self.actor_optimizer = torch.optim.Adam(self.model.actor.parameters(), lr=self.lr)
+    self.critic_optimizer = torch.optim.Adam(self.model.critics.parameters(), lr=self.lr)
+    self.memory = Memory(self.memory_size, self.batchsize, device)
 
-    self.output_norm = self.OutputNorm(dim=1).to(device)
-    self.output_norm_target = self.OutputNorm(dim=1).to(device)
+    self.outputnorm: PopArt = PopArt(self.model.value_layers, self.output_norm_update)
+    self.outputnorm_target: PopArt = PopArt(self.model_target.value_layers, self.output_norm_update)
 
   def act(self, obs, r, done, info, train=False):
     stats = []
@@ -64,8 +63,6 @@ class Agent:
     return action, stats
 
   def train(self):
-    stats = {}
-
     obs, actions, rewards, next_obs, terminals = self.memory.sample()
     rewards, terminals = rewards[:, None], terminals[:, None]  # expand for correct broadcasting below
 
@@ -73,55 +70,49 @@ class Agent:
     new_actions = new_action_distribution.rsample()
 
     # actor loss
-    new_actions_log_prob = new_action_distribution.log_prob(new_actions)[:, None]
-    assert new_actions_log_prob.dim() == 2 and new_actions_log_prob.shape[1] == 1, "use Independent(Dist(...), 1) instead of Dist(...)"
+    new_value = [c(obs, new_actions) for c in self.model.critics]
+    new_value = reduce(torch.min, new_value)
+    new_value = self.outputnorm.unnormalize(new_value)
 
-    new_action_value = [c(obs, new_actions) for c in self.model.critics]
-    new_action_value = reduce(torch.min, new_action_value)
-    new_action_value = self.output_norm.unnormalize(new_action_value)
-
-    loss_actor = self.entropy_scale * new_actions_log_prob.mean() - new_action_value.mean()
-    loss_actor, = self.output_norm.normalize(loss_actor)
-    stats.update(loss_actor=loss_actor.detach())
+    loss_actor = self.entropy_scale * new_action_distribution.log_prob(new_actions)[:, None] - new_value
+    assert loss_actor.shape == (self.batchsize, 1)
+    loss_actor = self.outputnorm.normalize(loss_actor).mean()
 
     # critic loss
     next_action_distribution = self.model_nograd.actor(next_obs)
     next_actions = next_action_distribution.sample()
-    next_action_value = [c(next_obs, next_actions) for c in self.model_target.critics]
-    next_action_value = reduce(torch.min, next_action_value)
-    next_action_value = self.output_norm_target.unnormalize(next_action_value)
-    next_action_value = next_action_value - next_action_distribution.log_prob(next_actions)[:, None]
-    action_value_target = self.reward_scale * rewards + (1. - terminals) * self.discount * next_action_value
+    next_value = [c(next_obs, next_actions) for c in self.model_target.critics]
+    next_value = reduce(torch.min, next_value)
+    next_value = self.outputnorm_target.unnormalize(next_value)
+    next_value = next_value - next_action_distribution.log_prob(next_actions)[:, None]  # TODO: self.entropy_scale * missing!
 
-    self.output_norm.update(action_value_target)
-    stats.update(v_mean=float(self.output_norm.m1), v_std=float(self.output_norm.std))
-    [self.output_norm.update_lin(c[-1]) for c in self.model.critics]
+    value_target = self.reward_scale * rewards + (1. - terminals) * self.discount * next_value
+    value_target = self.outputnorm.normalize(value_target, update=True)
 
-    action_value_target = self.output_norm.normalize(action_value_target)
-
-    action_values = [c(obs, actions) for c in self.model.critics]
-    assert not action_value_target.requires_grad
-    loss_critic = sum(mse_loss(av, action_value_target) for av in action_values)
-    stats.update(loss_critic=loss_critic.detach())
+    values = [c(obs, actions) for c in self.model.critics]
+    assert values[0].shape == value_target.shape and not value_target.requires_grad
+    loss_critic = sum(mse_loss(v, value_target) for v in values)
 
     # update actor and critic
     self.critic_optimizer.zero_grad()
     loss_critic.backward()
     self.critic_optimizer.step()
 
-    self.policy_optimizer.zero_grad()
+    self.actor_optimizer.zero_grad()
     loss_actor.backward()
-    self.policy_optimizer.step()
+    self.actor_optimizer.step()
 
     # update target critics and normalizers
-    with torch.no_grad():
-      for t, n in zip(self.model_target.critics.parameters(), self.model.critics.parameters()):
-        t.data += (1 - self.polyak) * (n - t)  # equivalent to t = α * t + (1-α) * n
-    self.output_norm_target.m1 = self.polyak * self.output_norm_target.m1 + (1 - self.polyak) * self.output_norm.m1
-    self.output_norm_target.std = self.polyak * self.output_norm_target.std + (1 - self.polyak) * self.output_norm.std
+    exponential_moving_average(self.model_target.critics.parameters(), self.model.critics.parameters(), self.target_update)
+    exponential_moving_average(self.outputnorm_target.parameters(), self.outputnorm.parameters(), self.target_update)
 
-    self.num_updates += 1
-    return dict(stats, memory_size=len(self.memory), updates=self.num_updates)
+    return dict(
+      loss_actor=loss_actor.detach(),
+      loss_critic=loss_critic.detach(),
+      outputnorm_mean=float(self.outputnorm.mean),
+      outputnorm_std=float(self.outputnorm.std),
+      memory_size=len(self.memory),
+    )
 
 
 # === tests ============================================================================================================

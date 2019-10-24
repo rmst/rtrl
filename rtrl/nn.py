@@ -4,7 +4,9 @@ from dataclasses import InitVar, dataclass
 import numpy as np
 import torch
 from torch.distributions import Distribution, Normal
+from torch.nn import Module
 from torch.nn.init import kaiming_uniform_, xavier_uniform_, calculate_gain
+from torch.nn.parameter import Parameter
 
 from rtrl import partial
 
@@ -13,6 +15,12 @@ def no_grad(model):
   for p in model.parameters():
     p.requires_grad = False
   return model
+
+
+def exponential_moving_average(averages, values, factor):
+  with torch.no_grad():
+    for a, v in zip(averages, values):
+      a += factor * (v - a)  # equivalent to a = (1-factor) * a + factor * v
 
 
 def copy_shared(model_a):
@@ -27,61 +35,47 @@ def copy_shared(model_a):
   return model_b
 
 
-@dataclass(eq=0)
-class PopArt:
+class PopArt(Module):
   """PopArt https://arxiv.org/pdf/1809.04474.pdf"""
-  dim: InitVar[int] = 1
-  beta: float = 0.0003
-  update_weights: int = 1  # i.e. should we try to preserve outputs. If no that's just a running mean, std
+  def __init__(self, output_layer, beta: float = 0.0003):
+    super().__init__()
+    self.beta = beta
+    self.output_layers = output_layer if isinstance(output_layer, (tuple, list)) else (output_layer,)
+    shape = self.output_layers[0].bias.shape
+    device = self.output_layers[0].bias.device
+    assert all(shape == x.bias.shape for x in self.output_layers)
+    self.mean = Parameter(torch.zeros(shape, device=device), requires_grad=False)
+    self.mean_square = Parameter(torch.ones(shape, device=device), requires_grad=False)
+    self.std = Parameter(torch.ones(shape, device=device), requires_grad=False)
 
-  def __post_init__(self, dim):
-    self.m1 = torch.zeros((dim,))
-    self.m2 = torch.ones((dim,))
-    self.std = torch.ones((dim,))
+  def normalize(self, value, update=False):
+    if update:
+      x = value.detach()
+      new_mean = (1 - self.beta) * self.mean + self.beta * x.mean(0)
+      new_mean_square = (1 - self.beta) * self.mean_square + self.beta * (x * x).mean(0)
+      new_std = (new_mean_square - new_mean * new_mean).sqrt().clamp(0.0001, 1e6)
 
-  def to(self, device):
-    [setattr(self, k, v.to(device)) for k, v in vars(self).items() if torch.is_tensor(v)]
-    return self
+      assert self.std.shape == (1,), 'this has only been tested in 1D'
+      for layer in self.output_layers:
+        layer.weight.data *= self.std / new_std
+        layer.bias.data *= self.std
+        layer.bias.data += self.mean - new_mean
+        layer.bias.data /= new_std
 
-  def update(self, targets):
-    targets = targets.detach()
-    self.m1_old = self.m1
-    self.m2_old = self.m2
-    self.std_old = self.std
-    self.m1 = (1-self.beta) * self.m1_old + self.beta * targets.mean(0)
-    self.m2 = (1-self.beta) * self.m2_old + self.beta * (targets * targets).mean(0)
-    self.std = (self.m2 - self.m1 * self.m1).sqrt().clamp(0.0001, 1e6)
+      self.mean.data, self.mean_square.data, self.std.data = new_mean, new_mean_square, new_std
 
-  def update_lin(self, lin):
-    if not self.update_weights:
-      return
-    assert isinstance(lin, torch.nn.Linear)
-    assert self.std.shape == (1,), 'this has only been tested with 1d outputs, verify that the following line is ' \
-                                   'doing the right thing to the weight matrix, then remove this statement '
-    lin.weight.data *= self.std_old / self.std
-    lin.bias.data *= self.std_old
-    lin.bias.data += self.m1_old - self.m1
-    lin.bias.data /= self.std
+    return (value - self.mean) / self.std
 
-  def normalize(self, x):
-    return (x - self.m1) / self.std
-
-  def unnormalize(self, x):
-    return x * self.std + self.m1
+  def unnormalize(self, value):
+    return value * self.std + self.mean
 
 
 # noinspection PyAbstractClass
 class TanhNormal(Distribution):
-  """ Represent distribution of X where
-      X ~ tanh(Z)
-      Z ~ N(mean, std)
+  """Distribution of X ~ tanh(Z) where Z ~ N(mean, std)
+  Adapted from https://github.com/vitchyr/rlkit
   """
   def __init__(self, normal_mean, normal_std, epsilon=1e-6):
-    """
-    :param normal_mean: Mean of the normal distribution
-    :param normal_std: Std of the normal distribution
-    :param epsilon: Numerical stability epsilon when computing log-prob.
-    """
     self.normal_mean = normal_mean
     self.normal_std = normal_std
     self.normal = Normal(normal_mean, normal_std)
@@ -134,27 +128,6 @@ class TanhNormalLayer(torch.nn.Module):
     # a = TanhTransformedDist(Independent(Normal(m, std), 1))
     a = Independent(TanhNormal(mean, std), 1)
     return a
-
-
-# class TanhNormalLayer(torch.nn.Module):
-#   def __init__(self, n, m):
-#     super().__init__()
-#     with torch.no_grad():
-#       self.lin_mean = torch.nn.Linear(n, m)
-#       xavier_uniform_(self.lin_mean.weight, calculate_gain('tanh'))
-#       self.lin_mean.bias.fill_(0)
-#       self.lin_std = torch.nn.Linear(n, m)
-#       xavier_uniform_(self.lin_std.weight, calculate_gain('tanh'))
-#       self.lin_std.bias.fill_(0)
-#
-#   def forward(self, x):
-#     mean = self.lin_mean(x)
-#     log_std = self.lin_std(x)
-#     log_std = torch.clamp(log_std, -20, 2)
-#     std = torch.exp(log_std)
-#     # a = TanhTransformedDist(Independent(Normal(m, std), 1))
-#     a = Independent(TanhNormal(mean, std), 1)
-#     return a
 
 
 class RlkitLinear(torch.nn.Linear):

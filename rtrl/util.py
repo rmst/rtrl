@@ -11,9 +11,10 @@ from contextlib import contextmanager
 from dataclasses import is_dataclass, dataclass, make_dataclass, fields, Field
 from importlib import import_module
 from itertools import chain
-from typing import TypeVar, Union, Type, Callable, Any, Dict
+from typing import TypeVar, Union, Type, Callable, Any, Dict, Sequence, Mapping
 from weakref import WeakKeyDictionary
 
+import numpy as np
 import pandas as pd
 import torch
 
@@ -29,6 +30,43 @@ def shallow_copy(obj: T) -> T:
   vars(x).update(vars(obj))
   return x
 
+
+# === collate and partition ============================================================================================
+
+def collate(batch, device=None):
+  elem = batch[0]
+  if isinstance(elem, torch.Tensor):
+    # return torch.stack(batch, 0).to(device, non_blocking=non_blocking)
+    if elem.numel() < 20000:  # TODO: link to the relavant profiling that lead to this threshold
+      return torch.stack(batch).to(device)
+    else:
+      return torch.stack([b.contiguous().to(device) for b in batch], 0)
+  elif isinstance(elem, np.ndarray):
+    return collate(tuple(torch.from_numpy(b) for b in batch), device)
+  elif hasattr(elem, '__torch_tensor__'):
+    return torch.stack([b.__torch_tensor__().to(device) for b in batch], 0)
+  elif isinstance(elem, Sequence):
+    transposed = zip(*batch)
+    return type(elem)(collate(samples, device) for samples in transposed)
+  elif isinstance(elem, Mapping):
+    return type(elem)((key, collate(tuple(d[key] for d in batch), device)) for key in elem)
+  else:
+    return torch.tensor(batch).to(device)
+
+
+def partition(x):
+  if isinstance(x, torch.Tensor):
+    # return x.cpu()
+    return x.cpu().numpy()  # perhaps we should convert this to tuple for consistency?
+  elif isinstance(x, Mapping):
+    m = {k: partition(x[k]) for k in x}
+    numel = len(tuple(m.values())[0])
+    out = tuple(type(x)((key, value[i]) for key, value in m.items()) for i in range(numel))
+    return out
+  raise TypeError()
+
+
+# === catched property =================================================================================================
 
 # noinspection PyPep8Naming
 class cached_property:
@@ -113,7 +151,40 @@ def partial_from_args(func: Union[str, callable], kwargs: Dict[str, str]):
   return partial(func, **keywords)
 
 
+# === git ==============================================================================================================
+
+def get_output(*args, default='', **kwargs):
+  try:
+    output = subprocess.check_output(*args, universal_newlines=True, **kwargs)
+    return output.rstrip("\n")  # skip trailing newlines as done in bash
+  except subprocess.CalledProcessError:
+    return default
+
+
+def git_info(path=None):
+  """returns a dict with information about the git repo at path (path can be a sub-directory of the git repo)
+  """
+  import __main__
+  path = path or os.path.dirname(__main__.__file__)
+  rev = get_output('git rev-parse HEAD'.split(), cwd=path)
+  count = int(get_output('git rev-list HEAD --count'.split(), cwd=path))
+  status = get_output('git status --short'.split(), cwd=path)  # shows un-committed modified files
+  commit_date = get_output("git show --quiet --date=format-local:%Y-%m-%dT%H:%M:%SZ --format=%cd".split(), cwd=path, env=dict(TZ='UTC'))
+  desc = get_output(['git', 'describe', '--long', '--tags', '--dirty', '--always', '--match', r'v[0-9]*\.[0-9]*'], cwd=path)
+  message = desc + " " + ' '.join(get_output(['git', 'log', '--oneline', '--format=%B', '-n', '1', "HEAD"], cwd=path).splitlines())
+
+  url = get_output('git config --get remote.origin.url'.split(), cwd=path).strip()
+  # if on github, change remote to a meaningful https url
+  if url.startswith('git@github.com:'):
+    url = 'https://github.com/' + url[len('git@github.com:'):-len('.git')] + '/commit/' + rev
+  elif url.startswith('https://github.com'):
+    url = url[:len('.git')] + '/commit/' + rev
+
+  return dict(url=url, rev=rev, count=count, status=status, desc=desc, date=commit_date, message=message)
+
+
 # === serialization ====================================================================================================
+
 def dump(obj, path):
   with DelayInterrupt():  # Continue to save even if SIGINT or SIGTERM is sent and raise KeyboardInterrupt afterwards.
     with open(path, 'wb') as f:
@@ -144,37 +215,6 @@ def save_json(d, path):
 def load_json(path):
   with open(path, 'r', encoding='utf-8') as f:
     return json.load(f)
-
-
-# === git ==============================================================================================================
-def get_output(*args, default='', **kwargs):
-  try:
-    output = subprocess.check_output(*args, universal_newlines=True, **kwargs)
-    return output.rstrip("\n")  # skip trailing newlines as done in bash
-  except subprocess.CalledProcessError:
-    return default
-
-
-def git_info(path=None):
-  """returns a dict with information about the git repo at path (path can be a sub-directory of the git repo)
-  """
-  import __main__
-  path = path or os.path.dirname(__main__.__file__)
-  rev = get_output('git rev-parse HEAD'.split(), cwd=path)
-  count = int(get_output('git rev-list HEAD --count'.split(), cwd=path))
-  status = get_output('git status --short'.split(), cwd=path)  # shows uncommited modified files
-  commit_date = get_output("git show --quiet --date=format-local:%Y-%m-%dT%H:%M:%SZ --format=%cd".split(), cwd=path, env=dict(TZ='UTC'))
-  desc = get_output(['git', 'describe', '--long', '--tags', '--dirty', '--always', '--match', r'v[0-9]*\.[0-9]*'], cwd=path)
-  message = desc + " " + ' '.join(get_output(['git', 'log', '--oneline', '--format=%B', '-n', '1', "HEAD"], cwd=path).splitlines())
-
-  url = get_output('git config --get remote.origin.url'.split(), cwd=path).strip()
-  # if on github, change remote to a meaningful https url
-  if url.startswith('git@github.com:'):
-    url = 'https://github.com/' + url[len('git@github.com:'):-len('.git')] + '/commit/' + rev
-  elif url.startswith('https://github.com'):
-    url = url[:len('.git')] + '/commit/' + rev
-
-  return dict(url=url, rev=rev, count=count, status=status, desc=desc, date=commit_date, message=message)
 
 
 # === signal handling ==================================================================================================
