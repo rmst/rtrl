@@ -1,3 +1,4 @@
+import atexit
 import multiprocessing as mp
 from dataclasses import dataclass
 from functools import partial
@@ -20,9 +21,11 @@ class Test:
     st = DataFrame(st)
     means = st.mean(skipna=True)
     # stds = st.std(skipna=True).add_suffix("std")
+    return means
+
+  def __del__(self):
     self.pool.close()
     self.pool.join()
-    return means
 
 
 def run_test(number, *, Env, actor, base_seed, steps):
