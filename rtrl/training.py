@@ -50,7 +50,7 @@ class Training:
 
     test = self.Test(
       Env=self.Env,
-      actor=deepcopy(self.agent.model),
+      actor=self.agent.model,
       steps=self.steps * self.rounds,
       base_seed=self.seed + self.epochs
     )

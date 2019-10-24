@@ -106,6 +106,8 @@ def partial_from_args(func: Union[str, callable], kwargs: Dict[str, str]):
     if param.annotation is type:
       sub_keywords = {k.split('.', 1)[1]: v for k, v in kwargs.items() if k.startswith(key + '.')}
       keywords[key] = partial_from_args(value, sub_keywords)
+    elif param.annotation is bool:
+      keywords[key] = bool(eval(value))  # because bool('False') will evaluate to True (it's a non-empty string).
     else:
       keywords[key] = param.annotation(value)
   return partial(func, **keywords)

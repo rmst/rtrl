@@ -1,42 +1,19 @@
 import multiprocessing as mp
 from dataclasses import dataclass
+from functools import partial
 
 import pandas as pd
 from pandas import DataFrame
 
-from rtrl.util import shallow_copy, pandas_dict
+from rtrl.util import pandas_dict
 from rtrl.wrappers import StatsWrapper
 
 
-@dataclass(eq=0)
 class Test:
-  Env: type
-  actor: object
-  base_seed: int
-  steps: int
-
-  number: int = 1
-  workers: int = 1
-
-  def __post_init__(self):
+  def __init__(self, number: int = 1, workers: int = 1, **kwargs):
     # Note: It is important that we `spawn` here. Using the default `fork`, will cause Pytorch 1.2 to lock up because it uses a buggy OpenMPI implementation (libgomp). Olexa Bilaniuk at Mila helped us figure this out.
-    self.pool = mp.get_context('spawn').Pool(self.workers)
-    self.result_handle = self.pool.map_async(self.run, range(self.number))
-
-  def __getstate__(self):
-    # instances of mp.Pool, etc. cannot be shared between processes
-    return {k: v for k, v in vars(self).items() if k not in ('pool', 'result_handle')}
-
-  def run(self, number=0):
-    t0 = pd.Timestamp.utcnow()
-    env = self.Env(seed_val=self.base_seed + number)
-    with StatsWrapper(env, window=self.steps) as env:
-      for step in range(self.steps):
-        action, stats = self.actor.act(*env.transition)
-        # action = env.action_space.sample()
-        env.step(action)
-
-      return pandas_dict(env.stats(), round_time=pd.Timestamp.utcnow() - t0)
+    self.pool = mp.get_context('spawn').Pool(workers)
+    self.result_handle = self.pool.map_async(partial(run_test, **kwargs), range(number))
 
   def stats(self):
     st = self.result_handle.get()
@@ -46,3 +23,15 @@ class Test:
     self.pool.close()
     self.pool.join()
     return means
+
+
+def run_test(number, *, Env, actor, base_seed, steps):
+  t0 = pd.Timestamp.utcnow()
+  env = Env(seed_val=base_seed + number)
+  with StatsWrapper(env, window=steps) as env:
+    for step in range(steps):
+      action, stats = actor.act(*env.transition)
+      # action = env.action_space.sample()
+      env.step(action)
+
+    return pandas_dict(env.stats(), round_time=pd.Timestamp.utcnow() - t0)
