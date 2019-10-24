@@ -117,7 +117,7 @@ class Agent:
 
 AvenueAgent = partial(
   Agent,
-  lr=0.0001,
+  lr=0.0001,  # should this be 0.0003 ?
   memory_size=200000,
   batchsize=100,
   training_interval=4,
