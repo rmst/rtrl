@@ -84,7 +84,7 @@ class Agent:
     next_value = [c(next_obs, next_actions) for c in self.model_target.critics]
     next_value = reduce(torch.min, next_value)
     next_value = self.outputnorm_target.unnormalize(next_value)
-    next_value = next_value - next_action_distribution.log_prob(next_actions)[:, None]  # TODO: self.entropy_scale * missing!
+    next_value = next_value - self.entropy_scale * next_action_distribution.log_prob(next_actions)[:, None]
 
     value_target = self.reward_scale * rewards + (1. - terminals) * self.discount * next_value
     value_target = self.outputnorm.normalize(value_target, update=True)
