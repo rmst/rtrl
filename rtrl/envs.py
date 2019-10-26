@@ -78,7 +78,7 @@ class GymEnv(Env):
 
 
 class AvenueEnv(Env):
-  def __init__(self, seed_val=0, id: str = "LaneFollowingTrack", real_time: bool = False):
+  def __init__(self, seed_val=0, id: str = "RaceSolo", real_time: bool = False):
     pretend_cpus = os.getenv('PRETEND_CPUS')
     if pretend_cpus:
       os.environ['PRETEND_CPUS'] = "1"

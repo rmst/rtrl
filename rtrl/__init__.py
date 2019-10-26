@@ -129,7 +129,6 @@ RtacAvenueTraining = partial(
   # epochs=10,
   # rounds=50,
   # steps=2000,
-  # test_rounds=1,
   Agent=partial(rtrl.rtac.AvenueAgent),
   Env=partial(AvenueEnv, real_time=True),
 )

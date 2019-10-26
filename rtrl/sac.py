@@ -87,7 +87,7 @@ class Agent:
     next_value = next_value - self.entropy_scale * next_action_distribution.log_prob(next_actions)[:, None]
 
     value_target = self.reward_scale * rewards + (1. - terminals) * self.discount * next_value
-    value_target = self.outputnorm.normalize(value_target, update=True)
+    value_target = self.outputnorm.normalize(value_target)
 
     values = [c(obs, actions) for c in self.model.critics]
     assert values[0].shape == value_target.shape and not value_target.requires_grad
@@ -101,6 +101,8 @@ class Agent:
     self.actor_optimizer.zero_grad()
     loss_actor.backward()
     self.actor_optimizer.step()
+
+    self.outputnorm.normalize(value_target, update=True)  # TODO: in case this works rename this function to "update"
 
     # update target critics and normalizers
     exponential_moving_average(self.model_target.critics.parameters(), self.model.critics.parameters(), self.target_update)
@@ -156,5 +158,5 @@ def test_agent_avenue():
 
 
 if __name__ == "__main__":
-  # test_agent()
-  test_agent_avenue()
+  test_agent()
+  # test_agent_avenue()

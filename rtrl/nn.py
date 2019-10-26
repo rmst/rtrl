@@ -48,23 +48,26 @@ class PopArt(Module):
     self.mean_square = Parameter(torch.ones(shape, device=device), requires_grad=False)
     self.std = Parameter(torch.ones(shape, device=device), requires_grad=False)
 
-  def normalize(self, value, update=False):
+  def normalize(self, x, update=False):
     if update:
-      x = value.detach()
-      new_mean = (1 - self.beta) * self.mean + self.beta * x.mean(0)
-      new_mean_square = (1 - self.beta) * self.mean_square + self.beta * (x * x).mean(0)
-      new_std = (new_mean_square - new_mean * new_mean).sqrt().clamp(0.0001, 1e6)
+      with torch.no_grad():
+        new_mean = (1 - self.beta) * self.mean + self.beta * x.mean(0)
+        new_mean_square = (1 - self.beta) * self.mean_square + self.beta * (x * x).mean(0)
+        new_std = (new_mean_square - new_mean * new_mean).sqrt().clamp(0.0001, 1e6)
 
-      assert self.std.shape == (1,), 'this has only been tested in 1D'
-      for layer in self.output_layers:
-        layer.weight.data *= self.std / new_std
-        layer.bias.data *= self.std
-        layer.bias.data += self.mean - new_mean
-        layer.bias.data /= new_std
+        assert self.std.shape == (1,), 'this has only been tested in 1D'
 
-      self.mean.data, self.mean_square.data, self.std.data = new_mean, new_mean_square, new_std
+        for layer in self.output_layers:
+          layer.weight *= self.std / new_std
+          layer.bias *= self.std
+          layer.bias += self.mean - new_mean
+          layer.bias /= new_std
 
-    return (value - self.mean) / self.std
+        self.mean.copy_(new_mean)
+        self.mean_square.copy_(new_mean_square)
+        self.std.copy_(new_std)
+
+    return (x - self.mean) / self.std
 
   def unnormalize(self, value):
     return value * self.std + self.mean

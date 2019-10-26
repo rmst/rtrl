@@ -20,7 +20,7 @@ class Training:
   epochs: int = 10
   rounds: int = 50  # number of rounds per epoch
   steps: int = 2000  # number of steps per round
-  test_rounds: int = 1  # rounds to evaluate over (test_rounds * steps should be at least as long as a single episode)
+  stats_window: int = None  # default = steps, should be at least as long as a single episode
   seed: int = 0  # seed is currently not used
 
   def __post_init__(self):
@@ -32,7 +32,7 @@ class Training:
 
   def run_epoch(self):
     stats = []
-    with StatsWrapper(self.Env(seed_val=self.seed+self.epoch), window=self.test_rounds*self.steps) as env:
+    with StatsWrapper(self.Env(seed_val=self.seed+self.epoch), window=self.stats_window or self.steps) as env:
       for rnd in range(self.rounds):
         print(f"=== epoch {self.epoch}/{self.epochs} ".ljust(20, '=') + f" round {rnd}/{self.rounds} ".ljust(50, '='))
         stats += self.run_round(env),
@@ -51,7 +51,7 @@ class Training:
     test = self.Test(
       Env=self.Env,
       actor=self.agent.model,
-      steps=self.test_rounds*self.steps,
+      steps=self.stats_window or self.steps,
       base_seed=self.seed+self.epochs
     )
 
