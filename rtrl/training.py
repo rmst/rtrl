@@ -46,8 +46,6 @@ class Training:
     stats_training = []
 
     # test runs in parallel to the training process
-    # noinspection PyArgumentList
-
     test = self.Test(
       Env=self.Env,
       actor=self.agent.model,
