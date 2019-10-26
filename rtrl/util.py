@@ -51,7 +51,7 @@ def collate(batch, device=None):
   elif isinstance(elem, Mapping):
     return type(elem)((key, collate(tuple(d[key] for d in batch), device)) for key in elem)
   else:
-    return torch.tensor(batch).to(device)
+    return torch.from_numpy(np.array(batch)).to(device)  # we create a numpy array first to work around https://github.com/pytorch/pytorch/issues/24200
 
 
 def partition(x):
