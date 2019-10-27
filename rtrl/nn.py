@@ -58,10 +58,13 @@ class PopArt(Module):
         assert self.std.shape == (1,), 'this has only been tested in 1D'
 
         for layer in self.output_layers:
-          layer.weight *= self.std / new_std
-          layer.bias *= self.std
-          layer.bias += self.mean - new_mean
-          layer.bias /= new_std
+          # TODO: Properly apply PopArt in RTAC and remove the hack below
+          # We modify the weight while it's gradient is being computed
+          # Therefore we have to use .data (Pytorch would otherwise throw an error)
+          layer.weight.data *= self.std / new_std
+          layer.bias.data *= self.std
+          layer.bias.data += self.mean - new_mean
+          layer.bias.data /= new_std
 
         self.mean.copy_(new_mean)
         self.mean_square.copy_(new_mean_square)

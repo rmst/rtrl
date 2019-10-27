@@ -79,13 +79,8 @@ class GymEnv(Env):
 
 class AvenueEnv(Env):
   def __init__(self, seed_val=0, id: str = "RaceSolo", real_time: bool = False):
-    pretend_cpus = os.getenv('PRETEND_CPUS')
-    if pretend_cpus:
-      os.environ['PRETEND_CPUS'] = "1"
     import avenue
     env = avenue.make(id)
-    if pretend_cpus:
-      os.environ['PRETEND_CPUS'] = pretend_cpus
     # env = TimeLimitResetWrapper(env)
     # env = DictObservationWrapper(env)
     assert isinstance(env.action_space, gym.spaces.Box)

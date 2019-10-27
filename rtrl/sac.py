@@ -69,15 +69,6 @@ class Agent:
     new_action_distribution = self.model.actor(obs)
     new_actions = new_action_distribution.rsample()
 
-    # actor loss
-    new_value = [c(obs, new_actions) for c in self.model.critics]
-    new_value = reduce(torch.min, new_value)
-    new_value = self.outputnorm.unnormalize(new_value)
-
-    loss_actor = self.entropy_scale * new_action_distribution.log_prob(new_actions)[:, None] - new_value
-    assert loss_actor.shape == (self.batchsize, 1)
-    loss_actor = self.outputnorm.normalize(loss_actor).mean()
-
     # critic loss
     next_action_distribution = self.model_nograd.actor(next_obs)
     next_actions = next_action_distribution.sample()
@@ -87,11 +78,20 @@ class Agent:
     next_value = next_value - self.entropy_scale * next_action_distribution.log_prob(next_actions)[:, None]
 
     value_target = self.reward_scale * rewards + (1. - terminals) * self.discount * next_value
-    value_target = self.outputnorm.normalize(value_target)
+    value_target = self.outputnorm.normalize(value_target, update=True)
 
     values = [c(obs, actions) for c in self.model.critics]
     assert values[0].shape == value_target.shape and not value_target.requires_grad
     loss_critic = sum(mse_loss(v, value_target) for v in values)
+
+    # actor loss
+    new_value = [c(obs, new_actions) for c in self.model.critics]
+    new_value = reduce(torch.min, new_value)
+    new_value = self.outputnorm.unnormalize(new_value)
+
+    loss_actor = self.entropy_scale * new_action_distribution.log_prob(new_actions)[:, None] - new_value
+    assert loss_actor.shape == (self.batchsize, 1)
+    loss_actor = self.outputnorm.normalize(loss_actor).mean()
 
     # update actor and critic
     self.critic_optimizer.zero_grad()
@@ -102,7 +102,7 @@ class Agent:
     loss_actor.backward()
     self.actor_optimizer.step()
 
-    self.outputnorm.normalize(value_target, update=True)  # TODO: in case this works rename this function to "update"
+    # self.outputnorm.normalize(value_target, update=True)  # This is not the right place to update PopArt
 
     # update target critics and normalizers
     exponential_moving_average(self.model_target.critics.parameters(), self.model.critics.parameters(), self.target_update)
