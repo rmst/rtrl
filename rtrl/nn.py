@@ -51,6 +51,8 @@ class PopArt(Module):
   def normalize(self, x, update=False):
     if update:
       with torch.no_grad():
+        # TODO: use beta = max(1/t, self.beta)
+        # for beta = 1/t the resulting mean, std would be the true mean and std over all past data
         new_mean = (1 - self.beta) * self.mean + self.beta * x.mean(0)
         new_mean_square = (1 - self.beta) * self.mean_square + self.beta * (x * x).mean(0)
         new_std = (new_mean_square - new_mean * new_mean).sqrt().clamp(0.0001, 1e6)

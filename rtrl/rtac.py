@@ -47,7 +47,7 @@ class Agent(rtrl.sac.Agent):
     value_target = (1. - terminals) * self.discount * self.outputnorm_target.unnormalize(next_value_target)
     value_target += self.reward_scale * rewards
     value_target -= self.entropy_scale * new_actions_log_prob.detach()
-    value_target = self.outputnorm.normalize(value_target, update=True)
+    value_target = self.outputnorm.normalize(value_target)
 
     assert values[0].shape == value_target.shape and not value_target.requires_grad
     loss_critic = sum(mse_loss(v, value_target) for v in values)
@@ -66,7 +66,8 @@ class Agent(rtrl.sac.Agent):
     loss_total.backward()
     self.optimizer.step()
 
-    # self.outputnorm.normalize(value_target, update=True)  # not the right place to update PopArt
+    # TODO: technically PopArt should update before SGD but this might work
+    self.outputnorm.normalize(self.outputnorm.unnormalize(value_target), update=True)
 
     # update target model and normalizers
     exponential_moving_average(self.model_target.parameters(), self.model.parameters(), self.target_update)
