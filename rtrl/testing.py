@@ -12,7 +12,7 @@ from rtrl.wrappers import StatsWrapper
 
 
 class Test:
-  def __init__(self, actor, workers: int = 1, number: int = 4, device: str = 'cpu', **kwargs):
+  def __init__(self, actor, workers: int = 1, number: int = 1, device: str = 'cpu', **kwargs):
     # cuda requires ~2GB RAM per process just to start so we might want to test on cpu even if cuda is available.
     actor = deepcopy(actor).to(device)
 

@@ -110,27 +110,28 @@ SacTraining = partial(
   Training,
   Agent=partial(rtrl.sac.Agent),
   Env=partial(id="Pendulum-v0"),
+  Test=partial(number=4)
 )
 
 RtacTraining = partial(
-  Training,
-  Agent=partial(rtrl.sac.Agent),
-  Env=partial(id="Pendulum-v0", real_time=True),
+  SacTraining,
+  Agent=partial(rtrl.rtac.Agent),
+  Env=partial(real_time=True),
 )
 
 SacAvenueTraining = partial(
   Training,
+  epochs=20,
+  rounds=10,
+  steps=5000,
   Agent=partial(rtrl.sac.AvenueAgent),
   Env=partial(AvenueEnv, real_time=False),
 )
 
 RtacAvenueTraining = partial(
-  Training,
-  # epochs=10,
-  # rounds=50,
-  # steps=2000,
+  SacAvenueTraining,
   Agent=partial(rtrl.rtac.AvenueAgent),
-  Env=partial(AvenueEnv, real_time=True),
+  Env=partial(real_time=True),
 )
 
 
