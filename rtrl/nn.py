@@ -53,7 +53,7 @@ class PopArt(Module):
 
   @torch.no_grad()
   def update(self, targets):
-    beta = max(1/self.updates, self.beta) if self.zero_debias else self.beta
+    beta = max(1/(self.updates+1), self.beta) if self.zero_debias else self.beta
     # note that for beta = 1/self.updates the resulting mean, std would be the true mean and std over all past data
 
     new_mean = (1 - beta) * self.mean + beta * targets.mean(0)
