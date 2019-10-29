@@ -37,8 +37,9 @@ def copy_shared(model_a):
 
 class PopArt(Module):
   """PopArt http://papers.nips.cc/paper/6076-learning-values-across-many-orders-of-magnitude"""
-  def __init__(self, output_layer, beta: float = 0.0003, zero_debias: bool = False):
+  def __init__(self, output_layer, beta: float = 0.0003, zero_debias: bool = False, start_pop=0.):
     super().__init__()
+    self.start_pop = start_pop
     self.beta = beta
     self.zero_debias = zero_debias
     self.output_layers = output_layer if isinstance(output_layer, (tuple, list)) else (output_layer,)
@@ -61,14 +62,15 @@ class PopArt(Module):
 
     assert self.std.shape == (1,), 'this has only been tested in 1D'
 
-    for layer in self.output_layers:
-      # TODO: Properly apply PopArt in RTAC and remove the hack below
-      # We modify the weight while it's gradient is being computed
-      # Therefore we have to use .data (Pytorch would otherwise throw an error)
-      layer.weight *= self.std / new_std
-      layer.bias *= self.std
-      layer.bias += self.mean - new_mean
-      layer.bias /= new_std
+    if self.updates >= self.start_pop:
+      for layer in self.output_layers:
+        # TODO: Properly apply PopArt in RTAC and remove the hack below
+        # We modify the weight while it's gradient is being computed
+        # Therefore we have to use .data (Pytorch would otherwise throw an error)
+        layer.weight *= self.std / new_std
+        layer.bias *= self.std
+        layer.bias += self.mean - new_mean
+        layer.bias /= new_std
 
     self.mean.copy_(new_mean)
     self.mean_square.copy_(new_mean_square)
