@@ -37,7 +37,7 @@ def copy_shared(model_a):
 
 class PopArt(Module):
   """PopArt http://papers.nips.cc/paper/6076-learning-values-across-many-orders-of-magnitude"""
-  def __init__(self, output_layer, beta: float = 0.0003, zero_debias: bool = False, start_pop=0.):
+  def __init__(self, output_layer, beta: float = 0.0003, zero_debias: bool = False, start_pop: int = 0.):
     super().__init__()
     self.start_pop = start_pop
     self.beta = beta
