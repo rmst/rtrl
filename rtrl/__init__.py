@@ -110,7 +110,7 @@ SacTraining = partial(
   Training,
   Agent=partial(rtrl.sac.Agent),
   Env=partial(id="Pendulum-v0"),
-  Test=partial(number=4)
+  Test=partial(number=10)
 )
 
 RtacTraining = partial(

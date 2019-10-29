@@ -86,7 +86,7 @@ class Agent(rtrl.sac.Agent):
 AvenueAgent = partial(
   Agent,
   lr=0.0001,
-  memory_size=200000,
+  memory_size=500000,
   batchsize=100,
   training_interval=4,
   start_training=10000,

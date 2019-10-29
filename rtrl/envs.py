@@ -21,6 +21,7 @@ def mujoco_py_issue_424_workaround():
 
 
 def normalize_half_cheetah(env):
+  # TODO: remove
   mean = np.array([-2.8978434e-01,  1.6660135e+00,  8.3246939e-02,  8.7178364e-02,
         2.4026206e-02,  6.5018900e-02,  1.4149654e-02,  1.0042821e-01,
        -6.2972151e-02, -5.7678702e-03,  3.1061701e-02,  2.9805478e-02,
@@ -104,8 +105,8 @@ class AvenueEnv(Env):
 
 
 def test_avenue():
-  env = AvenueEnv()
+  env = AvenueEnv(id="CityPedestrians")
   env.reset()
-  [env.step(env.action_space.sample()) for _ in range(10)]
+  [env.step(env.action_space.sample()) for _ in range(20)]
   (img, ), _, _, _ = env.step(env.action_space.sample())
   print('fjdk')
