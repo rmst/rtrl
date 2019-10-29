@@ -36,10 +36,11 @@ def copy_shared(model_a):
 
 
 class PopArt(Module):
-  """PopArt https://arxiv.org/pdf/1809.04474.pdf"""
-  def __init__(self, output_layer, beta: float = 0.0003):
+  """PopArt http://papers.nips.cc/paper/6076-learning-values-across-many-orders-of-magnitude"""
+  def __init__(self, output_layer, beta: float = 0.0003, zero_debias: bool = False):
     super().__init__()
     self.beta = beta
+    self.zero_debias = zero_debias
     self.output_layers = output_layer if isinstance(output_layer, (tuple, list)) else (output_layer,)
     shape = self.output_layers[0].bias.shape
     device = self.output_layers[0].bias.device
@@ -47,31 +48,35 @@ class PopArt(Module):
     self.mean = Parameter(torch.zeros(shape, device=device), requires_grad=False)
     self.mean_square = Parameter(torch.ones(shape, device=device), requires_grad=False)
     self.std = Parameter(torch.ones(shape, device=device), requires_grad=False)
+    self.updates = 0
 
-  def normalize(self, x, update=False):
-    if update:
-      with torch.no_grad():
-        # TODO: use beta = max(1/t, self.beta)
-        # for beta = 1/t the resulting mean, std would be the true mean and std over all past data
-        new_mean = (1 - self.beta) * self.mean + self.beta * x.mean(0)
-        new_mean_square = (1 - self.beta) * self.mean_square + self.beta * (x * x).mean(0)
-        new_std = (new_mean_square - new_mean * new_mean).sqrt().clamp(0.0001, 1e6)
+  @torch.no_grad()
+  def update(self, targets):
+    beta = max(1/self.updates, self.beta) if self.zero_debias else self.beta
+    # note that for beta = 1/self.updates the resulting mean, std would be the true mean and std over all past data
 
-        assert self.std.shape == (1,), 'this has only been tested in 1D'
+    new_mean = (1 - beta) * self.mean + beta * targets.mean(0)
+    new_mean_square = (1 - beta) * self.mean_square + beta * (targets * targets).mean(0)
+    new_std = (new_mean_square - new_mean * new_mean).sqrt().clamp(0.0001, 1e6)
 
-        for layer in self.output_layers:
-          # TODO: Properly apply PopArt in RTAC and remove the hack below
-          # We modify the weight while it's gradient is being computed
-          # Therefore we have to use .data (Pytorch would otherwise throw an error)
-          layer.weight.data *= self.std / new_std
-          layer.bias.data *= self.std
-          layer.bias.data += self.mean - new_mean
-          layer.bias.data /= new_std
+    assert self.std.shape == (1,), 'this has only been tested in 1D'
 
-        self.mean.copy_(new_mean)
-        self.mean_square.copy_(new_mean_square)
-        self.std.copy_(new_std)
+    for layer in self.output_layers:
+      # TODO: Properly apply PopArt in RTAC and remove the hack below
+      # We modify the weight while it's gradient is being computed
+      # Therefore we have to use .data (Pytorch would otherwise throw an error)
+      layer.weight *= self.std / new_std
+      layer.bias *= self.std
+      layer.bias += self.mean - new_mean
+      layer.bias /= new_std
 
+    self.mean.copy_(new_mean)
+    self.mean_square.copy_(new_mean_square)
+    self.std.copy_(new_std)
+    self.updates += 1
+    return self.normalize(targets)
+
+  def normalize(self, x):
     return (x - self.mean) / self.std
 
   def unnormalize(self, value):

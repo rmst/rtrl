@@ -101,3 +101,11 @@ class AvenueEnv(Env):
   def observation(self, observation):
     (img, vec), *more = observation
     return ((img.transpose(2, 0, 1), vec), *more)
+
+
+def test_avenue():
+  env = AvenueEnv()
+  env.reset()
+  [env.step(env.action_space.sample()) for _ in range(10)]
+  (img, ), _, _, _ = env.step(env.action_space.sample())
+  print('fjdk')

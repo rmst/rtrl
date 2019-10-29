@@ -21,12 +21,12 @@ class Agent:
   action_space: InitVar
 
   Model: type = rtrl.sac_models.Mlp
+  OutputNorm: type = PopArt
   batchsize: int = 256  # training batch size
   memory_size: int = 1000000  # replay memory size
   lr: float = 0.0003  # learning rate
   discount: float = 0.99  # reward discount factor
   target_update: float = 0.005  # parameter for exponential moving average
-  output_norm_update: float = 0.0003  # parameter for output normalization
   reward_scale: float = 5.
   entropy_scale: float = 1.
   start_training: int = 10000
@@ -41,15 +41,15 @@ class Agent:
   def __post_init__(self, observation_space, action_space):
     device = self.device or ("cuda" if torch.cuda.is_available() else "cpu")
     model = self.Model(observation_space, action_space)
-    self.model: Agent.Model = model.to(device)
-    self.model_target: Agent.Model = no_grad(deepcopy(self.model))
+    self.model = model.to(device)
+    self.model_target = no_grad(deepcopy(self.model))
 
     self.actor_optimizer = torch.optim.Adam(self.model.actor.parameters(), lr=self.lr)
     self.critic_optimizer = torch.optim.Adam(self.model.critics.parameters(), lr=self.lr)
     self.memory = Memory(self.memory_size, self.batchsize, device)
 
-    self.outputnorm: PopArt = PopArt(self.model.critic_output_layers, self.output_norm_update)
-    self.outputnorm_target: PopArt = PopArt(self.model_target.critic_output_layers, self.output_norm_update)
+    self.outputnorm = self.OutputNorm(self.model.critic_output_layers)
+    self.outputnorm_target = self.OutputNorm(self.model_target.critic_output_layers)
 
   def act(self, obs, r, done, info, train=False):
     stats = []
@@ -78,7 +78,7 @@ class Agent:
     next_value = next_value - self.entropy_scale * next_action_distribution.log_prob(next_actions)[:, None]
 
     value_target = self.reward_scale * rewards + (1. - terminals) * self.discount * next_value
-    value_target = self.outputnorm.normalize(value_target, update=True)
+    value_target = self.outputnorm.update(value_target)
 
     values = [c(obs, actions) for c in self.model.critics]
     assert values[0].shape == value_target.shape and not value_target.requires_grad

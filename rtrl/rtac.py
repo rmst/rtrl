@@ -24,8 +24,8 @@ class Agent(rtrl.sac.Agent):
     self.model = model.to(device)
     self.model_target = no_grad(deepcopy(self.model))
 
-    self.outputnorm: PopArt = PopArt(self.model.critic_output_layers, self.output_norm_update)
-    self.outputnorm_target: PopArt = PopArt(self.model_target.critic_output_layers, self.output_norm_update)
+    self.outputnorm = self.OutputNorm(self.model.critic_output_layers)
+    self.outputnorm_target = self.OutputNorm(self.model_target.critic_output_layers)
 
     self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
     self.memory = Memory(self.memory_size, self.batchsize, device)
@@ -36,24 +36,26 @@ class Agent(rtrl.sac.Agent):
     obs, actions, rewards, next_obs, terminals = self.memory.sample()
     rewards, terminals = rewards[:, None], terminals[:, None]  # expand for correct broadcasting below
 
-    new_action_distribution, values = self.model(obs)
+    new_action_distribution, _, hidden = self.model(obs)
     new_actions = new_action_distribution.rsample()
     new_actions_log_prob = new_action_distribution.log_prob(new_actions)[:, None]
 
     # critic loss
-    _, next_value_target = self.model_target((next_obs[0], new_actions.detach()))
+    _, next_value_target, _ = self.model_target((next_obs[0], new_actions.detach()))
     next_value_target = reduce(torch.min, next_value_target)
 
     value_target = (1. - terminals) * self.discount * self.outputnorm_target.unnormalize(next_value_target)
     value_target += self.reward_scale * rewards
     value_target -= self.entropy_scale * new_actions_log_prob.detach()
-    value_target = self.outputnorm.normalize(value_target)
+    value_target = self.outputnorm.update(value_target)
+
+    values = tuple(c(h) for c, h in zip(self.model.critic_output_layers, hidden))  # recompute values (weights changed)
 
     assert values[0].shape == value_target.shape and not value_target.requires_grad
     loss_critic = sum(mse_loss(v, value_target) for v in values)
 
     # actor loss
-    _, next_value = self.model_nograd((next_obs[0], new_actions))
+    _, next_value, _ = self.model_nograd((next_obs[0], new_actions))
     next_value = reduce(torch.min, next_value)
     loss_actor = - (1. - terminals) * self.discount * self.outputnorm.unnormalize(next_value)
     loss_actor += self.entropy_scale * new_actions_log_prob
@@ -65,9 +67,6 @@ class Agent(rtrl.sac.Agent):
     loss_total = self.loss_alpha * loss_actor + (1 - self.loss_alpha) * loss_critic
     loss_total.backward()
     self.optimizer.step()
-
-    # TODO: technically PopArt should update before SGD but this might work
-    self.outputnorm.normalize(self.outputnorm.unnormalize(value_target), update=True)
 
     # update target model and normalizers
     exponential_moving_average(self.model_target.parameters(), self.model.parameters(), self.target_update)

@@ -19,52 +19,48 @@ class Mlp(ActorModule):
       SacLinear(input_dim, hidden_units), ReLU(),
       SacLinear(hidden_units, hidden_units), ReLU(),
     )
-    self.critic = Linear(hidden_units, 1)
-    self.actor_output_layer = TanhNormalLayer(hidden_units, action_space.shape[0])
-    self.critic_output_layers = (self.critic,)
+    self.critic_layer = Linear(hidden_units, 1)
+    self.actor_layer = TanhNormalLayer(hidden_units, action_space.shape[0])
+    self.critic_output_layers = (self.critic_layer,)
 
   def actor(self, x):
-    return self[0]
+    return self(x)[0]
 
   def forward(self, x):
     assert isinstance(x, tuple)
     x = torch.cat(x, dim=1)
     h = self.net(x)
-    v = self.critic(h)
-    action_distribution = self.actor_output_layer(h)
-    return action_distribution, (v,)
+    v = self.critic_layer(h)
+    action_distribution = self.actor_layer(h)
+    return action_distribution, (v,), (h,)
 
 
-class MlpDouble(ActorModule):
-  def __init__(self, observation_space, action_space, hidden_units: int = 256):
-    super().__init__()
-    self.a: Mlp = Mlp(observation_space, action_space, hidden_units=hidden_units)
-    self.b: Mlp = Mlp(observation_space, action_space, hidden_units=hidden_units)
-    self.critic_output_layers = self.a.critic_output_layers + self.b.critic_output_layers
+class DoubleActorModule(ActorModule):
+  @property
+  def critic_output_layers(self):
+    return self.a.critic_output_layers + self.b.critic_output_layers
 
   def actor(self, x):
     return self.a(x)[0]
 
   def forward(self, x):
-    action_distribution, (v0,) = self.a(x)
-    _, (v1,) = self.b(x)
-    return action_distribution, (v0, v1)
+    action_distribution, v0, h0 = self.a(x)
+    _, v1, h1 = self.b(x)
+    return action_distribution, v0+v1, h0+h1  # note that the + here is not addition but tuple concatenation!
 
 
-class ConvDouble(ActorModule):
+class MlpDouble(DoubleActorModule):
   def __init__(self, observation_space, action_space, hidden_units: int = 256):
     super().__init__()
-    self.a: ConvRTAC = ConvRTAC(observation_space, action_space, hidden_units=hidden_units)
-    self.b: ConvRTAC = ConvRTAC(observation_space, action_space, hidden_units=hidden_units)
-    self.critic_output_layers = self.a.critic_output_layers + self.b.critic_output_layers
+    self.a = Mlp(observation_space, action_space, hidden_units=hidden_units)
+    self.b = Mlp(observation_space, action_space, hidden_units=hidden_units)
 
-  def actor(self, x):
-    return self.a(x)[0]
 
-  def forward(self, x):
-    action_distribution, (v0,) = self.a(x)
-    _, (v1,) = self.b(x)
-    return action_distribution, (v0, v1)
+class ConvDouble(DoubleActorModule):
+  def __init__(self, observation_space, action_space, hidden_units: int = 256):
+    super().__init__()
+    self.a = ConvRTAC(observation_space, action_space, hidden_units=hidden_units)
+    self.b = ConvRTAC(observation_space, action_space, hidden_units=hidden_units)
 
 
 class ConvRTAC(Module):
@@ -79,9 +75,9 @@ class ConvRTAC(Module):
       conv_size = self.conv(torch.zeros((1, *img_sp.shape))).view(1, -1).size(1)
 
     self.lin1 = Linear(conv_size + vec_sp.shape[0] + ac_sp.shape[0], hidden_units)
-    self.critic = Linear(hidden_units, 1)
-    self.actor = TanhNormalLayer(hidden_units, action_space.shape[0])
-    self.critic_output_layers = (self.critic,)
+    self.critic_layer = Linear(hidden_units, 1)
+    self.actor_layer = TanhNormalLayer(hidden_units, action_space.shape[0])
+    self.critic_output_layers = (self.critic_layer,)
 
   def forward(self, inp):
     (x, vec), action = inp
@@ -90,9 +86,9 @@ class ConvRTAC(Module):
     x = self.conv(x)
     x = x.view(x.size(0), -1)
     h = leaky_relu(self.lin1(torch.cat((x, vec, action), -1)))
-    v = self.critic(h)
-    action_distribution = self.actor(h)
-    return action_distribution, (v,)
+    v = self.critic_layer(h)
+    action_distribution = self.actor_layer(h)
+    return action_distribution, (v,), (h,)
 
 
 #
