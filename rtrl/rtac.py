@@ -85,7 +85,8 @@ class Agent(rtrl.sac.Agent):
 
 AvenueAgent = partial(
   Agent,
-  lr=0.0001,
+  entropy_scale=0.05,
+  lr=0.0002,
   memory_size=500000,
   batchsize=100,
   training_interval=4,

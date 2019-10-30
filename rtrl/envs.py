@@ -107,6 +107,6 @@ class AvenueEnv(Env):
 def test_avenue():
   env = AvenueEnv(id="CityPedestrians")
   env.reset()
-  [env.step(env.action_space.sample()) for _ in range(20)]
+  [env.step(env.action_space.sample()) for _ in range(1000)]
   (img, ), _, _, _ = env.step(env.action_space.sample())
   print('fjdk')
