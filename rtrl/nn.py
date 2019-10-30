@@ -43,7 +43,7 @@ class PopArt(Module):
     self.start_pop = start_pop
     self.beta = beta
     self.zero_debias = zero_debias
-    self.output_layers = output_layer if isinstance(output_layer, (tuple, list)) else (output_layer,)
+    self.output_layers = output_layer if isinstance(output_layer, (tuple, list, torch.nn.ModuleList)) else (output_layer,)
     shape = self.output_layers[0].bias.shape
     device = self.output_layers[0].bias.device
     assert all(shape == x.bias.shape for x in self.output_layers)

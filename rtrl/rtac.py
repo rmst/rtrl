@@ -97,7 +97,7 @@ AvenueAgent = partial(
 
 if __name__ == "__main__":
   from rtrl import Training, run
-
+  from rtrl import rtac_models
   Rtac_Test = partial(
     Training,
     epochs=3,
@@ -113,10 +113,10 @@ if __name__ == "__main__":
     epochs=3,
     rounds=5,
     steps=300,
-    Agent=partial(AvenueAgent, device='cpu', start_training=256, batchsize=4),
+    Agent=partial(AvenueAgent, device='cpu', start_training=256, batchsize=4, Model=rtac_models.ConvMultihead),
     Env=partial(AvenueEnv, real_time=True),
     Test=partial(number=1),  # laptop can't handle more than that
   )
 
-  run(Rtac_Test)
-  # run(Rtac_Avenue_Test)
+  # run(Rtac_Test)
+  run(Rtac_Avenue_Test)

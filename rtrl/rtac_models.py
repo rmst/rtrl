@@ -63,7 +63,7 @@ class ConvDouble(DoubleActorModule):
     self.b = ConvRTAC(observation_space, action_space, hidden_units=hidden_units)
 
 
-class ConvRTAC(Module):
+class ConvRTAC(ActorModule):
   def __init__(self, observation_space, action_space, hidden_units: int = 256):
     super().__init__()
     assert isinstance(observation_space, gym.spaces.Tuple)
@@ -89,6 +89,35 @@ class ConvRTAC(Module):
     v = self.critic_layer(h)
     action_distribution = self.actor_layer(h)
     return action_distribution, (v,), (h,)
+
+
+class ConvMultihead(ActorModule):
+  def __init__(self, observation_space, action_space, hidden_units: int = 256, num_critics: int = 2):
+    super().__init__()
+    assert isinstance(observation_space, gym.spaces.Tuple)
+    (img_sp, vec_sp), ac_sp = observation_space
+    self.conv = big_conv(img_sp.shape[0])
+    with torch.no_grad():
+      conv_size = self.conv(torch.zeros((1, *img_sp.shape))).view(1, -1).size(1)
+
+    self.linear_layers = torch.nn.ModuleList([Linear(conv_size + vec_sp.shape[0] + ac_sp.shape[0], hidden_units) for _ in range(1+num_critics)])
+    self.critic_output_layers = torch.nn.ModuleList([Linear(hidden_units, 1) for _ in range(num_critics)])
+    self.actor_layer = TanhNormalLayer(hidden_units, action_space.shape[0])
+
+  def actor(self, x):
+    return self(x)[0]
+
+  def forward(self, inp):
+    (x, vec), action = inp
+    x = x.type(torch.float32)
+    x = x / 255 - 0.5
+    x = self.conv(x)
+    x = x.view(x.size(0), -1)
+    x = torch.cat((x, vec, action), -1)
+    hs = [leaky_relu(lin(x)) for lin in self.linear_layers]
+    vs = [critic(h) for critic, h in zip(self.critic_output_layers, hs[1:])]
+    action_distribution = self.actor_layer(hs[0])
+    return action_distribution, vs, hs
 
 
 #

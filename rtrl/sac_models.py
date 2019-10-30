@@ -11,7 +11,6 @@ from rtrl.nn import TanhNormalLayer, SacLinear, big_conv
 
 class ActorModule(Module):
   device = 'cpu'
-  critic_output_layers = ()
   actor: callable
 
   # noinspection PyMethodOverriding
