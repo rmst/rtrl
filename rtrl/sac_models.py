@@ -66,7 +66,7 @@ class Mlp(ActorModule):
 
 # === convolutional models =======================================================================================================
 class ConvActor(Module):
-  def __init__(self, observation_space, action_space, hidden_units: int = 256, Conv: type = big_conv):
+  def __init__(self, observation_space, action_space, hidden_units: int = 512, Conv: type = big_conv):
     super().__init__()
     assert isinstance(observation_space, gym.spaces.Tuple)
     (img_sp, vec_sp), *aux = observation_space
@@ -90,7 +90,7 @@ class ConvActor(Module):
 
 
 class ConvCritic(Module):
-  def __init__(self, observation_space, action_space, hidden_units: int = 256, Conv: type = big_conv):
+  def __init__(self, observation_space, action_space, hidden_units: int = 512, Conv: type = big_conv):
     super().__init__()
     assert isinstance(observation_space, gym.spaces.Tuple)
     (img_sp, vec_sp), *aux = observation_space

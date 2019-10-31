@@ -57,14 +57,14 @@ class MlpDouble(DoubleActorModule):
 
 
 class ConvDouble(DoubleActorModule):
-  def __init__(self, observation_space, action_space, hidden_units: int = 256, conv: type = big_conv):
+  def __init__(self, observation_space, action_space, hidden_units: int = 512, conv: type = big_conv):
     super().__init__()
     self.a = ConvRTAC(observation_space, action_space, hidden_units=hidden_units, conv=conv)
     self.b = ConvRTAC(observation_space, action_space, hidden_units=hidden_units, conv=conv)
 
 
 class ConvRTAC(ActorModule):
-  def __init__(self, observation_space, action_space, hidden_units: int = 256, conv: type = big_conv):
+  def __init__(self, observation_space, action_space, hidden_units: int = 512, conv: type = big_conv):
     super().__init__()
     assert isinstance(observation_space, gym.spaces.Tuple)
     (img_sp, vec_sp), ac_sp = observation_space
@@ -92,7 +92,7 @@ class ConvRTAC(ActorModule):
 
 
 class ConvMultihead(ActorModule):
-  def __init__(self, observation_space, action_space, hidden_units: int = 256, num_critics: int = 2):
+  def __init__(self, observation_space, action_space, hidden_units: int = 512, num_critics: int = 2):
     super().__init__()
     assert isinstance(observation_space, gym.spaces.Tuple)
     (img_sp, vec_sp), ac_sp = observation_space
