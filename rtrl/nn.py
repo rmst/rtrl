@@ -225,3 +225,12 @@ def big_conv(n):
     torch.nn.Conv2d(32, 32, 4, stride=2), torch.nn.LeakyReLU(),
     torch.nn.Conv2d(32, 32, 4, stride=1), torch.nn.LeakyReLU(),
   )
+
+
+def bigger_conv(n):
+  return torch.nn.Sequential(
+    torch.nn.Conv2d(n, 48, 8, stride=2), torch.nn.LeakyReLU(),
+    torch.nn.Conv2d(48, 48, 4, stride=2), torch.nn.LeakyReLU(),
+    torch.nn.Conv2d(48, 48, 4, stride=2), torch.nn.LeakyReLU(),
+    torch.nn.Conv2d(48, 48, 4, stride=1), torch.nn.LeakyReLU(),
+  )

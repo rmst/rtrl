@@ -57,19 +57,19 @@ class MlpDouble(DoubleActorModule):
 
 
 class ConvDouble(DoubleActorModule):
-  def __init__(self, observation_space, action_space, hidden_units: int = 256):
+  def __init__(self, observation_space, action_space, hidden_units: int = 256, conv: type = big_conv):
     super().__init__()
-    self.a = ConvRTAC(observation_space, action_space, hidden_units=hidden_units)
-    self.b = ConvRTAC(observation_space, action_space, hidden_units=hidden_units)
+    self.a = ConvRTAC(observation_space, action_space, hidden_units=hidden_units, conv=conv)
+    self.b = ConvRTAC(observation_space, action_space, hidden_units=hidden_units, conv=conv)
 
 
 class ConvRTAC(ActorModule):
-  def __init__(self, observation_space, action_space, hidden_units: int = 256):
+  def __init__(self, observation_space, action_space, hidden_units: int = 256, conv: type = big_conv):
     super().__init__()
     assert isinstance(observation_space, gym.spaces.Tuple)
     (img_sp, vec_sp), ac_sp = observation_space
 
-    self.conv = big_conv(img_sp.shape[0])
+    self.conv = conv(img_sp.shape[0])
 
     with torch.no_grad():
       conv_size = self.conv(torch.zeros((1, *img_sp.shape))).view(1, -1).size(1)
