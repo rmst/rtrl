@@ -59,22 +59,23 @@ class MlpDouble(DoubleActorModule):
 class ConvDouble(DoubleActorModule):
   def __init__(self, observation_space, action_space, hidden_units: int = 512, conv: type = big_conv):
     super().__init__()
-    self.a = ConvRTAC(observation_space, action_space, hidden_units=hidden_units, conv=conv)
-    self.b = ConvRTAC(observation_space, action_space, hidden_units=hidden_units, conv=conv)
+    self.a = ConvRTAC(observation_space, action_space, hidden_units=hidden_units, Conv=conv)
+    self.b = ConvRTAC(observation_space, action_space, hidden_units=hidden_units, Conv=conv)
 
 
 class ConvRTAC(ActorModule):
-  def __init__(self, observation_space, action_space, hidden_units: int = 512, conv: type = big_conv):
+  def __init__(self, observation_space, action_space, hidden_units: int = 512, Conv: type = big_conv):
     super().__init__()
     assert isinstance(observation_space, gym.spaces.Tuple)
     (img_sp, vec_sp), ac_sp = observation_space
 
-    self.conv = conv(img_sp.shape[0])
+    self.conv = Conv(img_sp.shape[0])
 
     with torch.no_grad():
       conv_size = self.conv(torch.zeros((1, *img_sp.shape))).view(1, -1).size(1)
 
     self.lin1 = Linear(conv_size + vec_sp.shape[0] + ac_sp.shape[0], hidden_units)
+    self.lin2 = Linear(hidden_units + vec_sp.shape[0] + ac_sp.shape[0], hidden_units)
     self.critic_layer = Linear(hidden_units, 1)
     self.actor_layer = TanhNormalLayer(hidden_units, action_space.shape[0])
     self.critic_output_layers = (self.critic_layer,)
@@ -85,13 +86,15 @@ class ConvRTAC(ActorModule):
     x = x / 255 - 0.5
     x = self.conv(x)
     x = x.view(x.size(0), -1)
-    h = leaky_relu(self.lin1(torch.cat((x, vec, action), -1)))
-    v = self.critic_layer(h)
-    action_distribution = self.actor_layer(h)
-    return action_distribution, (v,), (h,)
+    x = leaky_relu(self.lin1(torch.cat((x, vec, action), -1)))
+    x = leaky_relu(self.lin2(torch.cat((x, vec, action), -1)))
+    v = self.critic_layer(x)
+    action_distribution = self.actor_layer(x)
+    return action_distribution, (v,), (x,)
 
 
 class ConvMultihead(ActorModule):
+  # TODO: outdated, test or remove
   def __init__(self, observation_space, action_space, hidden_units: int = 512, num_critics: int = 2):
     super().__init__()
     assert isinstance(observation_space, gym.spaces.Tuple)

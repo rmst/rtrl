@@ -75,7 +75,13 @@ class ConvActor(Module):
     with torch.no_grad():
       conv_size = self.conv(torch.zeros((1, *img_sp.shape))).view(1, -1).size(1)
 
-    self.lin1 = torch.nn.Linear(conv_size + vec_sp.shape[0] + sum(sp.shape[0] for sp in aux), hidden_units)
+    self.lin1 = torch.nn.Linear(
+      conv_size + vec_sp.shape[0] + sum(sp.shape[0] for sp in aux),
+      hidden_units)
+    self.lin2 = torch.nn.Linear(
+      hidden_units + vec_sp.shape[0] + sum(sp.shape[0] for sp in aux),
+      hidden_units
+    )
     self.output_layer = TanhNormalLayer(hidden_units, action_space.shape[0])
 
   def forward(self, observation):
@@ -85,6 +91,7 @@ class ConvActor(Module):
     x = self.conv(x)
     x = x.view(x.size(0), -1)
     x = leaky_relu(self.lin1(torch.cat((x, vec, *aux), -1)))
+    x = leaky_relu(self.lin2(torch.cat((x, vec, *aux), -1)))
     x = self.output_layer(x)
     return x
 
@@ -99,14 +106,15 @@ class ConvCritic(Module):
     with torch.no_grad():
       conv_size = self.conv(torch.zeros((1, *img_sp.shape))).view(1, -1).size(1)
 
-    self.net = Sequential(
-      torch.nn.Linear(conv_size + vec_sp.shape[0] + sum(sp.shape[0] for sp in aux) + action_space.shape[0], hidden_units),
-      torch.nn.LeakyReLU(),
-      torch.nn.Linear(hidden_units, 1)
+    self.lin1 = torch.nn.Linear(
+      conv_size + vec_sp.shape[0] + sum(sp.shape[0] for sp in aux) + action_space.shape[0],
+      hidden_units)
+    self.lin2 = torch.nn.Linear(
+      hidden_units + vec_sp.shape[0] + sum(sp.shape[0] for sp in aux) + action_space.shape[0],
+      hidden_units
     )
-
-  def __getitem__(self, item):
-    return self.net[item]  # used for normalization in rtrl.sac:Agent
+    self.output_layer = torch.nn.Linear(hidden_units, 1)
+    self.critic_output_layers = self.output_layer,
 
   def forward(self, observation, a):
     (x, vec), *aux = observation
@@ -114,8 +122,9 @@ class ConvCritic(Module):
     x = x / 255 - 0.5
     x = self.conv(x)
     x = x.view(x.size(0), -1)
-    x = torch.cat((x, vec, *aux, a), -1)
-    x = self.net(x)
+    x = leaky_relu(self.lin1(torch.cat((x, vec, *aux, a), -1)))
+    x = leaky_relu(self.lin2(torch.cat((x, vec, *aux, a), -1)))
+    x = self.output_layer(x)
     return x
 
 
@@ -124,7 +133,7 @@ class ConvModel(ActorModule):
     super().__init__()
     self.actor = ConvActor(observation_space, action_space, hidden_units)
     self.critics = ModuleList(ConvCritic(observation_space, action_space, hidden_units) for _ in range(num_critics))
-    self.critic_output_layers = [c[-1] for c in self.critics]
+    self.critic_output_layers = sum((c.critic_output_layers for c in self.critics), ())
 
 
 # === Testing ==========================================================================================================

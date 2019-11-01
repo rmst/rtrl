@@ -79,7 +79,7 @@ class GymEnv(Env):
 
 
 class AvenueEnv(Env):
-  def __init__(self, seed_val=0, id: str = "RaceSolo", real_time: bool = False):
+  def __init__(self, seed_val=0, id: str = "RaceSolo_v0", real_time: bool = False):
     import avenue
     env = avenue.make(id)
     # env = TimeLimitResetWrapper(env)
@@ -105,7 +105,7 @@ class AvenueEnv(Env):
 
 
 def test_avenue():
-  env = AvenueEnv(id="CityPedestrians")
+  env = AvenueEnv(id="CityPedestrians_v0")
   env.reset()
   [env.step(env.action_space.sample()) for _ in range(1000)]
   (img, ), _, _, _ = env.step(env.action_space.sample())
