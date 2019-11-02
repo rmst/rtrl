@@ -11,7 +11,7 @@ ENV GIT_SSH_COMMAND 'ssh -o "StrictHostKeyChecking no"'
 ARG RTRL_REV
 RUN --mount=type=ssh git clone git@github.com:rmst/rtrl.git /app/rtrl \
   && cd /app/rtrl \
-  && git reset --hard $RTRL_REV \
+  && git reset --hard ${RTRL_REV?} \
   && pip --no-cache-dir install -e .
 
 # optional wandb installation

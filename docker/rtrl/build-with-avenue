@@ -15,4 +15,4 @@ pushd ../avenue; bash build rtrl_base $AVENUE_REV; popd
 # using experimental ssh forwarding (see Dockerfile)
 DOCKER_BUILDKIT=1 docker build --ssh default -t $1 --build-arg BASE=rtrl_base --build-arg RTRL_REV=$RTRL_REV .
 
-echo "Built '$1' with rtrl revision $RTRL_REV based on avenue"
+echo "Built '$1' with rtrl revision $RTRL_REV based on avenue revision $AVENUE_REV"
