@@ -16,9 +16,9 @@ docker build -t unity3d - < unity3d.dockerfile
 docker build -t unity3d-py --build-arg BASE=unity3d ../pytorch
 docker build -t unity3d-gym --build-arg BASE=unity3d-py --build-arg GYM_FEATURES="" ../gym
 
-echo fjkdsfdjksl $AVENUE_REV
 # using experimental ssh forwarding (see Dockerfile)
 DOCKER_BUILDKIT=1 docker build --ssh default -t $1 \
-  --build-arg BASE=unity3d-py --build-arg AVENUE_REV=$AVENUE_REV .
+  --build-arg BASE=unity3d-py \
+  --build-arg AVENUE_REV=$AVENUE_REV .
 
 echo "Built '$1' with Avenue revision $AVENUE_REV"
