@@ -16,8 +16,14 @@ class Memory:
 
   def append(self, r, done, info, obs, action):
     if self.last_observation is not None:
-      # info["reset"] = True means the episode reset shouldn't be learned (e.g. time limit)
-      if self.keep_reset_transitions or not info.get('TimeLimit.truncated', False):
+
+      if self.keep_reset_transitions:
+        store = True
+      else:
+        # info["reset"] = True means the episode reset shouldn't be treated as a true terminal state
+        store = not info.get('TimeLimit.truncated', False) and not info.get('reset', False)
+
+      if store:
         self.memory.append((self.last_observation, self.last_action, r, obs, done))
 
     self.last_observation = obs
