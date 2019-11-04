@@ -75,7 +75,7 @@ class ConvRTAC(ActorModule):
       conv_size = self.conv(torch.zeros((1, *img_sp.shape))).view(1, -1).size(1)
 
     self.lin1 = Linear(conv_size + vec_sp.shape[0] + ac_sp.shape[0], hidden_units)
-    # self.lin2 = Linear(hidden_units + vec_sp.shape[0] + ac_sp.shape[0], hidden_units)
+    self.lin2 = Linear(hidden_units + vec_sp.shape[0] + ac_sp.shape[0], hidden_units)
     self.critic_layer = Linear(hidden_units, 1)
     self.actor_layer = TanhNormalLayer(hidden_units, action_space.shape[0])
     self.critic_output_layers = (self.critic_layer,)
@@ -87,7 +87,7 @@ class ConvRTAC(ActorModule):
     x = self.conv(x)
     x = x.view(x.size(0), -1)
     x = leaky_relu(self.lin1(torch.cat((x, vec, action), -1)))
-    # x = leaky_relu(self.lin2(torch.cat((x, vec, action), -1)))
+    x = leaky_relu(self.lin2(torch.cat((x, vec, action), -1)))
     v = self.critic_layer(x)
     action_distribution = self.actor_layer(x)
     return action_distribution, (v,), (x,)

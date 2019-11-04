@@ -78,10 +78,10 @@ class ConvActor(Module):
     self.lin1 = torch.nn.Linear(
       conv_size + vec_sp.shape[0] + sum(sp.shape[0] for sp in aux),
       hidden_units)
-    # self.lin2 = torch.nn.Linear(
-    #   hidden_units + vec_sp.shape[0] + sum(sp.shape[0] for sp in aux),
-    #   hidden_units
-    # )
+    self.lin2 = torch.nn.Linear(
+      hidden_units + vec_sp.shape[0] + sum(sp.shape[0] for sp in aux),
+      hidden_units
+    )
     self.output_layer = TanhNormalLayer(hidden_units, action_space.shape[0])
 
   def forward(self, observation):
@@ -91,7 +91,7 @@ class ConvActor(Module):
     x = self.conv(x)
     x = x.view(x.size(0), -1)
     x = leaky_relu(self.lin1(torch.cat((x, vec, *aux), -1)))
-    # x = leaky_relu(self.lin2(torch.cat((x, vec, *aux), -1)))
+    x = leaky_relu(self.lin2(torch.cat((x, vec, *aux), -1)))
     x = self.output_layer(x)
     return x
 
@@ -109,10 +109,10 @@ class ConvCritic(Module):
     self.lin1 = torch.nn.Linear(
       conv_size + vec_sp.shape[0] + sum(sp.shape[0] for sp in aux) + action_space.shape[0],
       hidden_units)
-    # self.lin2 = torch.nn.Linear(
-    #   hidden_units + vec_sp.shape[0] + sum(sp.shape[0] for sp in aux) + action_space.shape[0],
-    #   hidden_units
-    # )
+    self.lin2 = torch.nn.Linear(
+      hidden_units + vec_sp.shape[0] + sum(sp.shape[0] for sp in aux) + action_space.shape[0],
+      hidden_units
+    )
     self.output_layer = torch.nn.Linear(hidden_units, 1)
     self.critic_output_layers = self.output_layer,
 
@@ -123,7 +123,7 @@ class ConvCritic(Module):
     x = self.conv(x)
     x = x.view(x.size(0), -1)
     x = leaky_relu(self.lin1(torch.cat((x, vec, *aux, a), -1)))
-    # x = leaky_relu(self.lin2(torch.cat((x, vec, *aux, a), -1)))
+    x = leaky_relu(self.lin2(torch.cat((x, vec, *aux, a), -1)))
     x = self.output_layer(x)
     return x
 
