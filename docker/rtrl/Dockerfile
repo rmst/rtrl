@@ -8,6 +8,8 @@ WORKDIR /app
 
 ENV GIT_SSH_COMMAND 'ssh -o "StrictHostKeyChecking no"'
 
+RUN pip --no-cache-dir install matplotlib
+
 ARG RTRL_REV
 RUN --mount=type=ssh git clone git@github.com:rmst/rtrl.git /app/rtrl \
   && cd /app/rtrl \
