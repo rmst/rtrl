@@ -5,7 +5,7 @@ from os.path import join, dirname
 import sys
 
 if sys.version_info < (3, 7):
-  sys.exit('Sorry, Python < 3.7 is not supported')
+  sys.exit('Sorry, Python < 3.7 is not supported. We use dataclasses that have been introduced in 3.7.')
 
 setup(
   name='rtrl',

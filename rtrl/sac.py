@@ -159,5 +159,5 @@ def test_agent_avenue():
 
 
 if __name__ == "__main__":
-  # test_agent()
-  test_agent_avenue()
+  test_agent()
+  # test_agent_avenue()

@@ -118,5 +118,5 @@ if __name__ == "__main__":
     Test=partial(number=1),  # laptop can't handle more than that
   )
 
-  run(Rtac_Test)
-  # run(Rtac_Avenue_Test)
+  # run(Rtac_Test)
+  run(Rtac_Avenue_Test)

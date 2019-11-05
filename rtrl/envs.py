@@ -79,9 +79,9 @@ class GymEnv(Env):
 
 
 class AvenueEnv(Env):
-  def __init__(self, seed_val=0, id: str = "RaceSolo_v0", real_time: bool = False):
+  def __init__(self, seed_val=0, id: str = "RaceSolo-v0", real_time: bool = False):
     import avenue
-    env = avenue.make(id)
+    env = avenue.make(id.replace('-', '_'))
     # env = TimeLimitResetWrapper(env)
     # env = DictObservationWrapper(env)
     assert isinstance(env.action_space, gym.spaces.Box)
@@ -105,7 +105,7 @@ class AvenueEnv(Env):
 
 
 def test_avenue():
-  env = AvenueEnv(id="CityPedestrians_v0")
+  env = AvenueEnv(id="CityPedestrians-v0")
   env.reset()
   [env.step(env.action_space.sample()) for _ in range(1000)]
   (img, ), _, _, _ = env.step(env.action_space.sample())
