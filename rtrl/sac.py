@@ -153,11 +153,11 @@ def test_agent_avenue():
     steps=300,
     Agent=partial(AvenueAgent, device='cpu', training_interval=4, start_training=400),
     Env=partial(AvenueEnv, real_time=0),
-    Test=partial(number=1),  # laptop can't handle more than that
+    Test=partial(number=0),  # laptop can't handle more than that
   )
   run(Sac_Avenue_Test)
 
 
 if __name__ == "__main__":
-  test_agent()
-  # test_agent_avenue()
+  # test_agent()
+  test_agent_avenue()

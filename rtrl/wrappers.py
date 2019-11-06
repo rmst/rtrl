@@ -22,6 +22,24 @@ class RealTimeWrapper(gym.Wrapper):
     return (observation, action), reward, done, info
 
 
+class PreviousActionWrapper(gym.Wrapper):
+  def __init__(self, env):
+    super().__init__(env)
+    self.observation_space = gym.spaces.Tuple((env.observation_space, env.action_space))
+    # self.initial_action = env.action_space.sample()
+    assert isinstance(env.action_space, gym.spaces.Box)
+    self.initial_action = env.action_space.high * 0
+
+  def reset(self):
+    self.previous_action = self.initial_action
+    return super().reset(), self.previous_action
+
+  def step(self, action):
+    observation, reward, done, info = super().step(action)  # this line is different from RealTimeWrapper
+    self.previous_action = action
+    return (observation, action), reward, done, info
+
+
 class StatsWrapper(gym.Wrapper):
   """Compute running statistics (return, number of episodes, etc.) over a certain time window."""
 

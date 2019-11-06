@@ -3,7 +3,7 @@ import os
 from dataclasses import dataclass, InitVar
 import gym
 from rtrl.wrappers import Float64ToFloat32, TimeLimitResetWrapper, NormalizeActionWrapper, RealTimeWrapper, \
-  TupleObservationWrapper, AffineObservationWrapper, AffineRewardWrapper
+  TupleObservationWrapper, AffineObservationWrapper, AffineRewardWrapper, PreviousActionWrapper
 import numpy as np
 
 
@@ -90,7 +90,9 @@ class AvenueEnv(Env):
     if real_time:
       env = RealTimeWrapper(env)
     else:
-      env = TupleObservationWrapper(env)
+      # Avenue environments are non-markovian. We don't want to give real-time methods an advantage by having the past action as part of it's state while non-real-time methods have not. I.e. we add the past action to the state below.
+      env = PreviousActionWrapper(env)
+      # env = TupleObservationWrapper(env)
     super().__init__(env)
 
     # bring images into right format: batch x channels x height x width
