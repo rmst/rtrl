@@ -93,6 +93,27 @@ class ConvRTAC(ActorModule):
     return action_distribution, (v,), (x,)
 
 
+class ConvSeparate(ActorModule):
+  def __init__(self, observation_space, action_space, hidden_units: int = 512, conv: type = big_conv):
+    super().__init__()
+    self.a = ConvRTAC(observation_space, action_space, hidden_units=hidden_units, Conv=conv)
+    self.b = ConvRTAC(observation_space, action_space, hidden_units=hidden_units, Conv=conv)
+    self.c = ConvRTAC(observation_space, action_space, hidden_units=hidden_units, Conv=conv)
+
+  @property
+  def critic_output_layers(self):
+    return self.b.critic_output_layers + self.c.critic_output_layers
+
+  def actor(self, x):
+    return self.a(x)[0]
+
+  def forward(self, x):
+    action_distribution, *_ = self.a(x)
+    _, v0, h0 = self.b(x)
+    _, v1, h1 = self.c(x)
+    return action_distribution, v0+v1, h0+h1  # note that the + here is not addition but tuple concatenation!
+
+
 class ConvMultihead(ActorModule):
   # TODO: outdated, test or remove
   def __init__(self, observation_space, action_space, hidden_units: int = 512, num_critics: int = 2):
