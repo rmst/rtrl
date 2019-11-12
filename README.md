@@ -44,7 +44,7 @@ python - rtrl run rtrl:SacTraining Env.id=Ant-v2 Env.real_time=True
 ```
 
 ### Avenue Experiments
-Avenue can be pip-installed via
+Avenue [(Ibrahim et al., 2019)](https://github.com/elementaI/avenue) can be pip-installed via
 ```bash
 pip install git+https://github.com/elementai/avenue.git
 ```
@@ -67,7 +67,7 @@ Stats are generated and printed every `round` but only saved to disk every `epoc
 ### Checkpointing
 This repo supports checkpointing. Every `epoch` the whole run object (e.g. instances of `rtrl.training:Training`) is pickled to disk and reloaded. This is to ensure reproducibilty.
 
-You can manually load and inspect pickled run instances with the standard `picke:load` or the more convenient `rtrl:load`. For example, to look at the first transition in a SAC agent's replay memory run
+You can manually load and inspect pickled run instances with the standard `pickle:load` or the more convenient `rtrl:load`. For example, to look at the first transition in a SAC agent's replay memory run
 ```python
 import rtrl
 run = rtrl.load('rtrl-checkpoints/test')
