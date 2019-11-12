@@ -2,6 +2,17 @@
 
 This repo is accompanying our paper "Real-Time Reinforcement Learning" (https://arxiv.org/abs/1911.04448).
 
+<p align="center">
+  <img src="/resources/rl.png" width=30% />
+  &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;
+  <img src="/resources/rtrl.png" width=30% /> 
+</p>
+<p align="center">
+  Traditional Reinforcement Learning
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  Real-Time Reinforcement Learning
+</p>
+
 
 ### Getting Started
 This repo can be pip-installed via
@@ -17,7 +28,10 @@ python -m rtrl run rtrl:RtacTraining Env.id=Pendulum-v0
 
 
 ### Mujoco Experiments
-To install Mujoco you follow the instructions at [openai/gym](https://github.com/openai/gym) or have a look at [`our dockerfile`](github.com/rmst/rtrl/blob/master/docker/gym/Dockerfile).
+To install Mujoco you follow the instructions at [openai/gym](https://github.com/openai/gym) or have a look at [`our dockerfile`](github.com/rmst/rtrl/blob/master/docker/gym/Dockerfile). The following environments were used in the paper.
+
+![MuJoCo](resources/mujoco_horizontal.png)
+
 
 To train an RTAC agent on `HalfCheetah-v2` run
 ```bash
@@ -34,8 +48,9 @@ Avenue can be pip-installed via
 ```bash
 pip install git+https://github.com/elementai/avenue.git
 ```
+<p align="center"><img src="/resources/avenue_collage.png" width=95% /></p>
 
-To train an RTAC agent to drive on an empty road run
+To train an RTAC agent to drive on a race track (left image) run
 ```bash
 python -m rtrl run rtrl:RtacAvenueTraining Env.id=RaceSolo-v0
 ```
@@ -43,11 +58,11 @@ Note that this requires a lot of resources, especially memory (16GB+).
 
 
 ### Storing Stats
-`python -m rtrl run` just prints stats to stdout. To save stats as pickled pandas dataframes use the following instead.
+`python -m rtrl run` just prints stats to stdout. To save stats use the following instead.
 ```bash
 python -m rtrl run-fs my-rtrl-experiment rtrl:RtacTraining Env.id=Pendulum-v0
 ```
-Stats are generated and printed every `round` but only saved to disk every `epoch`.
+Stats are generated and printed every `round` but only saved to disk every `epoch`. The stats will be saved as pickled pandas dataframes in `my-rtrl-experiment/stats`.
 
 ### Checkpointing
 This repo supports checkpointing. Every `epoch` the whole run object (e.g. instances of `rtrl.training:Training`) is pickled to disk and reloaded. This is to ensure reproducibilty.
