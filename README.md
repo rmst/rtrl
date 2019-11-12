@@ -40,7 +40,7 @@ python -m rtrl run rtrl:RtacTraining Env.id=HalfCheetah-v2
 
 To train a SAC agent on `Ant-v2` with a real-time wrapper (i.e. RTMDP in the paper) run
 ```bash
-python - rtrl run rtrl:SacTraining Env.id=Ant-v2 Env.real_time=True
+python -m rtrl run rtrl:SacTraining Env.id=Ant-v2 Env.real_time=True
 ```
 
 ### Avenue Experiments
