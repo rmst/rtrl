@@ -9,6 +9,8 @@ from torch.nn.functional import leaky_relu
 
 from rtrl.sac_models import ActorModule
 
+# TODO: Add separate mlp model
+
 
 class Mlp(ActorModule):
   def __init__(self, observation_space, action_space, hidden_units: int = 256):
@@ -112,71 +114,3 @@ class ConvSeparate(ActorModule):
     _, v0, h0 = self.b(x)
     _, v1, h1 = self.c(x)
     return action_distribution, v0+v1, h0+h1  # note that the + here is not addition but tuple concatenation!
-
-
-class ConvMultihead(ActorModule):
-  # TODO: outdated, test or remove
-  def __init__(self, observation_space, action_space, hidden_units: int = 512, num_critics: int = 2):
-    super().__init__()
-    assert isinstance(observation_space, gym.spaces.Tuple)
-    (img_sp, vec_sp), ac_sp = observation_space
-    self.conv = big_conv(img_sp.shape[0])
-    with torch.no_grad():
-      conv_size = self.conv(torch.zeros((1, *img_sp.shape))).view(1, -1).size(1)
-
-    self.linear_layers = torch.nn.ModuleList([Linear(conv_size + vec_sp.shape[0] + ac_sp.shape[0], hidden_units) for _ in range(1+num_critics)])
-    self.critic_output_layers = torch.nn.ModuleList([Linear(hidden_units, 1) for _ in range(num_critics)])
-    self.actor_layer = TanhNormalLayer(hidden_units, action_space.shape[0])
-
-  def actor(self, x):
-    return self(x)[0]
-
-  def forward(self, inp):
-    (x, vec), action = inp
-    x = x.type(torch.float32)
-    x = x / 255 - 0.5
-    x = self.conv(x)
-    x = x.view(x.size(0), -1)
-    x = torch.cat((x, vec, action), -1)
-    hs = [leaky_relu(lin(x)) for lin in self.linear_layers]
-    vs = [critic(h) for critic, h in zip(self.critic_output_layers, hs[1:])]
-    action_distribution = self.actor_layer(hs[0])
-    return action_distribution, vs, hs
-
-
-#
-# class SeparateRT(nn.Module):
-#   class HL(Mlp.HL):
-#     class L(RlkitHiddenLinear): pass
-#
-#   class LCL(agents.nn.Linear):
-#     pass
-#
-#   class LPL(TanhNormalLayer): pass
-#
-#   hidden_units: int = 256
-#   num_critics: int = 1
-#
-#   def __init__(self, ob_space, a_space, **kwargs):
-#     super().__init__()
-#
-#     apply_kwargs(self, kwargs)
-#     s = STATE({k: v.shape for k, v in ob_space.spaces.items()})
-#     self.dim_obs = s.s[0] + (s.a[0] if s.a is not None else 0)
-#     self.a_space = a_space
-#
-#     self.critic = nn.Sequential(self.HL(self.dim_obs, self.hidden_units),
-#                                 self.HL(self.hidden_units, self.hidden_units),
-#                                 self.LCL(self.hidden_units, self.num_critics))
-#
-#     self.actor = nn.Sequential(self.HL(self.dim_obs, self.hidden_units),
-#                                self.HL(self.hidden_units, self.hidden_units),
-#                                self.LPL(self.hidden_units, self.a_space.shape[0]))
-#     self.v_out = (self.critic[-1],)
-#
-#   def forward(self, x):
-#     v = self.critic(x.s)
-#     a = self.actor(x.s)
-#     return (a, None), tuple(v[:, i:i + 1] for i in range(self.num_critics))
-#
-#

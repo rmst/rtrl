@@ -82,6 +82,8 @@ def run_wandb(entity, project, run_id, run_cls: type = Training, checkpoint_path
 
 def run_fs(path: str, run_cls: type = Training):
   """run and save config and stats to `path` (with pickle)"""
+  if not exists(path):
+    os.mkdir(path)
   save_json(partial_to_dict(run_cls), path+'/spec.json')
   if not exists(path+'/stats'):
     dump(pd.DataFrame(), path+'/stats')
@@ -99,12 +101,6 @@ TestTraining = partial(
   Agent=partial(memory_size=1000000),
   Env=partial(id="Pendulum-v0"),
 )
-
-# SimpleTraining = partial(
-#   Training,
-#   Agent=partial(memory_size=1000000),
-#   Env=partial(id="Pendulum-v0"),
-# )
 
 SacTraining = partial(
   Training,

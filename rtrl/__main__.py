@@ -1,7 +1,12 @@
 """A simple command line interface
 
-Yaml is used to interpret the run specification because it doesn't require quoting around strings (compared to Python or Json).
-Requiring quotes would be annoying because they are consumed by bash itself.
+Usage:
+
+  python -m rtrl run rtrl:RtacTraining Env.id=Pendulum-v0
+
+or
+
+  python -m rtrl run-fs rtrl-checkpoint-0 rtrl:RtacTraining Env.id=Pendulum-v0
 """
 
 import sys
@@ -19,9 +24,9 @@ def parse_args(func, *a):
 
 if cmd == "run":
   run(parse_args(*args))
-elif cmd == "run_fs":
+elif cmd == "run-fs":
   run_fs(args[0], parse_args(*args[1:]))
-elif cmd == "run_wandb":
+elif cmd == "run-wandb":
   run_wandb(args[0], args[1], args[2], parse_args(*args[4:]), args[3])
 else:
   raise AttributeError("Undefined command: " + cmd)

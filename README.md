@@ -39,11 +39,11 @@ To train an RTAC agent to drive on an empty road run
 ```bash
 python -m rtrl run rtrl:RtacAvenueTraining Env.id=RaceSolo-v0
 ```
-Note that this requires a lot of computational, especially memory (16GB+).
+Note that this requires a lot of resources, especially memory (16GB+).
 
 
 ### Storing Stats
-`python -m rtrl run` just prints stats to stdout. To save stats as pickled pandas dataframes use `python -m rtrl run-fs ????????????` instead. Stats are generated and printed every `round` but only saved to disk every `epoch`.
+`python -m rtrl run` just prints stats to stdout. To save stats as pickled pandas dataframes use `python -m rtrl run-fs my-rtrl-experiment rtrl:RtacTraining Env.id=Pendulum-v0` instead. Stats are generated and printed every `round` but only saved to disk every `epoch`.
 
 ### Checkpointing
 This repo supports checkpointing. Every `epoch` the whole run object (e.g. instances of `rtrl.training:Training`) is pickled to disk and reloaded. This is to ensure reproducibilty.

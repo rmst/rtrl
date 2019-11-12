@@ -218,15 +218,6 @@ def dqn_conv(n):
     )
 
 
-# def big_conv(n):
-#   return torch.nn.Sequential(
-#     torch.nn.Conv2d(n, 32, 8, stride=2), torch.nn.LeakyReLU(),
-#     torch.nn.Conv2d(32, 32, 4, stride=2), torch.nn.LeakyReLU(),
-#     torch.nn.Conv2d(32, 32, 4, stride=2), torch.nn.LeakyReLU(),
-#     torch.nn.Conv2d(32, 32, 4, stride=1), torch.nn.LeakyReLU(),
-#   )
-
-
 def big_conv(n):
   # if input shape = 64 x 256 then output shape = 2 x 26
   return torch.nn.Sequential(

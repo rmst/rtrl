@@ -7,8 +7,6 @@ import numpy as np
 import torch
 from torch.nn.functional import mse_loss
 
-
-import rtrl.nn
 from rtrl.memory import Memory
 from rtrl.nn import PopArt, no_grad, copy_shared, exponential_moving_average
 from rtrl.util import cached_property, partial

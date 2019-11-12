@@ -8,7 +8,7 @@ from os.path import dirname
 from shutil import rmtree
 from subprocess import check_call
 from tempfile import mkdtemp
-from rtrl import SimpleTraining, spec, save_json
+from rtrl import save_json
 
 ROOT = dirname(dirname(__file__))
 
@@ -26,14 +26,12 @@ if __name__ == "__main__":
     print("")
     environ["EXPERIMENTS"] = path
     environ["PATH"] = dirname(sys.executable) + ":" + environ["PATH"]
-    mkdir(path + "/e1")
-    save_json(spec(SimpleTraining), path + "/e1/spec.json")
+    # mkdir(path + "/e1")
     try:
-      callx(["rtrl-parallel", 'e1'])
+      callx(["rtrl-parallel", '1', 'python', '-m', 'rtrl', 'run-fs', path + '/e1', 'rtrl:RtacTraining', 'Env.id=Pendulum-v0'])
     finally:
       callx(["ls", path])
       callx(["ls", path + "/e1"])
-      callx(["cat", path + "/e1/output.txt"])
       print("=" * 70 + "\n")
   finally:
     rmtree(path)

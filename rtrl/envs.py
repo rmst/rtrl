@@ -20,23 +20,6 @@ def mujoco_py_issue_424_workaround():
   [os.remove(join(path, name)) for name in os.listdir(path) if name.endswith("lock")]
 
 
-def normalize_half_cheetah(env):
-  # TODO: remove
-  mean = np.array([-2.8978434e-01,  1.6660135e+00,  8.3246939e-02,  8.7178364e-02,
-        2.4026206e-02,  6.5018900e-02,  1.4149654e-02,  1.0042821e-01,
-       -6.2972151e-02, -5.7678702e-03,  3.1061701e-02,  2.9805478e-02,
-       -6.7784175e-02,  4.7515810e-02, -5.1149428e-03,  5.3308241e-02,
-        3.0382004e-04])
-  std = np.array([0.23879883, 1.4998492 , 0.28086397, 0.29111406, 0.28239846,
-       0.36456883, 0.3396931 , 0.28372395, 0.673492  , 0.7025841 ,
-       1.4711759 , 5.872539  , 6.899377  , 7.830265  , 6.6277347 ,
-       7.3030405 , 6.1115613 ])
-
-  env = AffineObservationWrapper(env, -mean, 1/std)
-  # env = AffineRewardWrapper(env, 0., 1.)
-  return env
-
-
 class Env(gym.Wrapper):
   def __init__(self, env):
     super().__init__(env)
@@ -56,19 +39,12 @@ class Env(gym.Wrapper):
 
 
 class GymEnv(Env):
-  def __init__(self, seed_val=0, id: str = "Pendulum-v0", real_time: bool = False, normalize: bool = False):
+  def __init__(self, seed_val=0, id: str = "Pendulum-v0", real_time: bool = False):
     env = gym.make(id)
-    if normalize:
-      assert id.startswith("HalfCheetah")
-      env = normalize_half_cheetah(env)
-      # env = AffineObservationWrapper(env, 0., 0.1)
-
     env = Float64ToFloat32(env)
     env = TimeLimitResetWrapper(env)
-    # env = DictObservationWrapper(env)
     assert isinstance(env.action_space, gym.spaces.Box)
     env = NormalizeActionWrapper(env)
-    # env = DictActionWrapper(env)
     if real_time:
       env = RealTimeWrapper(env)
     else:
@@ -81,18 +57,14 @@ class GymEnv(Env):
 class AvenueEnv(Env):
   def __init__(self, seed_val=0, id: str = "RaceSolo-v0", real_time: bool = False):
     import avenue
-    env = avenue.make(id.replace('-', '_'))
-    # env = TimeLimitResetWrapper(env)
-    # env = DictObservationWrapper(env)
+    env = avenue.make(id)
     assert isinstance(env.action_space, gym.spaces.Box)
     env = NormalizeActionWrapper(env)
-    # env = DictActionWrapper(env)
     if real_time:
       env = RealTimeWrapper(env)
     else:
       # Avenue environments are non-markovian. We don't want to give real-time methods an advantage by having the past action as part of it's state while non-real-time methods have not. I.e. we add the past action to the state below.
       env = PreviousActionWrapper(env)
-      # env = TupleObservationWrapper(env)
     super().__init__(env)
 
     # bring images into right format: batch x channels x height x width
