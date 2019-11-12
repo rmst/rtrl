@@ -1,6 +1,6 @@
 # Real-Time Reinforcement Learning
 
-This repo contains
+This repo is accompanying our paper "Real-Time Reinforcement Learning" (https://arxiv.org/abs/1911.04448).
 
 
 ### Getting Started
@@ -17,7 +17,7 @@ python -m rtrl run rtrl:RtacTraining Env.id=Pendulum-v0
 
 
 ### Mujoco Experiments
-To install Mujoco you follow the instructions at [openai/gym](https://github.com/openai/gym) or have a look at [`docker/gym/Dockerfile`](github.com/rmst/rtrl/blob/master/docker/gym/Dockerfile).
+To install Mujoco you follow the instructions at [openai/gym](https://github.com/openai/gym) or have a look at [`our dockerfile`](github.com/rmst/rtrl/blob/master/docker/gym/Dockerfile).
 
 To train an RTAC agent on `HalfCheetah-v2` run
 ```bash
@@ -43,12 +43,16 @@ Note that this requires a lot of resources, especially memory (16GB+).
 
 
 ### Storing Stats
-`python -m rtrl run` just prints stats to stdout. To save stats as pickled pandas dataframes use `python -m rtrl run-fs my-rtrl-experiment rtrl:RtacTraining Env.id=Pendulum-v0` instead. Stats are generated and printed every `round` but only saved to disk every `epoch`.
+`python -m rtrl run` just prints stats to stdout. To save stats as pickled pandas dataframes use the following instead.
+```bash
+python -m rtrl run-fs my-rtrl-experiment rtrl:RtacTraining Env.id=Pendulum-v0
+```
+Stats are generated and printed every `round` but only saved to disk every `epoch`.
 
 ### Checkpointing
 This repo supports checkpointing. Every `epoch` the whole run object (e.g. instances of `rtrl.training:Training`) is pickled to disk and reloaded. This is to ensure reproducibilty.
 
-You can manually load and inspect pickled run instances with the standard `picke:load` or do for convenience use `rtrl:load`. For example, to look at the first transition in a SAC agent's replay memory run
+You can manually load and inspect pickled run instances with the standard `picke:load` or the more convenient `rtrl:load`. For example, to look at the first transition in a SAC agent's replay memory run
 ```python
 import rtrl
 run = rtrl.load('rtrl-checkpoints/test')
