@@ -3,9 +3,7 @@
 This repo is accompanying our paper "Real-Time Reinforcement Learning" (https://arxiv.org/abs/1911.04448).
 
 <p align="center">
-  <img src="/resources/rl.png" width=30% />
-  &nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;
-  <img src="/resources/rtrl.png" width=30% /> 
+  <img src="/resources/rl-rtrl.png" width=70% />
 </p>
 <p align="center">
   Traditional Reinforcement Learning
