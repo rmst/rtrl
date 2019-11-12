@@ -39,7 +39,7 @@ class Memory:
 
   def __getitem__(self, item):
     return self.memory[item]
-  
+
   def sample_indices(self):
     return (randint(0, len(self.memory) - 1) for _ in range(self.batchsize))
 
