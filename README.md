@@ -60,9 +60,9 @@ Note that this requires a lot of resources, especially memory (16GB+).
 ### Storing Stats
 `python -m rtrl run` just prints stats to stdout. To save stats use the following instead.
 ```bash
-python -m rtrl run-fs my-rtrl-experiment rtrl:RtacTraining Env.id=Pendulum-v0
+python -m rtrl run-fs experiment-1 rtrl:RtacTraining Env.id=Pendulum-v0
 ```
-Stats are generated and printed every `round` but only saved to disk every `epoch`. The stats will be saved as pickled pandas dataframes in `my-rtrl-experiment/stats`.
+Stats are generated and printed every `round` but only saved to disk every `epoch`. The stats will be saved as pickled pandas dataframes in `experiment-1/stats`.
 
 ### Checkpointing
 This repo supports checkpointing. Every `epoch` the whole run object (e.g. instances of `rtrl.training:Training`) is pickled to disk and reloaded. This is to ensure reproducibilty.
@@ -70,6 +70,6 @@ This repo supports checkpointing. Every `epoch` the whole run object (e.g. insta
 You can manually load and inspect pickled run instances with the standard `pickle:load` or the more convenient `rtrl:load`. For example, to look at the first transition in a SAC agent's replay memory run
 ```python
 import rtrl
-run = rtrl.load('rtrl-checkpoints/test')
-print(run.agent.memory.memory[0])
+run = rtrl.load('experiment-1/state')
+print(run.agent.memory[0])
 ``` 
