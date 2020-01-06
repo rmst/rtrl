@@ -8,7 +8,7 @@ import torch
 from torch.nn.functional import mse_loss
 
 from rtrl.memory import Memory
-from rtrl.nn import PopArt, no_grad, copy_shared, exponential_moving_average
+from rtrl.nn import PopArt, no_grad, copy_shared, exponential_moving_average, hd_conv
 from rtrl.util import cached_property, partial
 import rtrl.sac_models
 
@@ -156,6 +156,22 @@ def test_agent_avenue():
   run(Sac_Avenue_Test)
 
 
+def test_agent_avenue_hd():
+  from rtrl import Training, run
+  from rtrl.envs import AvenueEnv
+  Sac_Avenue_Test = partial(
+    Training,
+    epochs=3,
+    rounds=5,
+    steps=300,
+    Agent=partial(AvenueAgent, device='cpu', training_interval=4, start_training=400, Model=partial(Conv=hd_conv)),
+    Env=partial(AvenueEnv, real_time=0, width=368, height=368),
+    Test=partial(number=0),  # laptop can't handle more than that
+  )
+  run(Sac_Avenue_Test)
+
+
 if __name__ == "__main__":
-  test_agent()
+  # test_agent()
   # test_agent_avenue()
+  test_agent_avenue_hd()

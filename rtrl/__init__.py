@@ -130,6 +130,15 @@ RtacAvenueTraining = partial(
   Env=partial(real_time=True),
 )
 
+SacAvenueHdTraining = partial(
+    Training,
+    epochs=20,
+    rounds=10,
+    steps=5000,
+    Agent=partial(rtrl.sac.AvenueAgent, device='cpu', training_interval=4, memory_size=100000, Model=partial(Conv=rtrl.nn.hd_conv)),
+    Env=partial(AvenueEnv, real_time=0, width=368, height=368),
+    Test=partial(number=0),  # laptop can't handle more than that
+  )
 
 # === tests ============================================================================================================
 if __name__ == "__main__":

@@ -55,9 +55,9 @@ class GymEnv(Env):
 
 
 class AvenueEnv(Env):
-  def __init__(self, seed_val=0, id: str = "RaceSolo-v0", real_time: bool = False):
+  def __init__(self, seed_val=0, id: str = "RaceSolo-v0", real_time: bool = False, width: int = 256, height: int = 64):
     import avenue
-    env = avenue.make(id)
+    env = avenue.make(id, width=width, height=height)
     assert isinstance(env.action_space, gym.spaces.Box)
     env = NormalizeActionWrapper(env)
     if real_time:

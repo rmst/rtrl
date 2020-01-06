@@ -74,7 +74,7 @@ class ConvActor(Module):
     self.conv = Conv(img_sp.shape[0])
     with torch.no_grad():
       conv_size = self.conv(torch.zeros((1, *img_sp.shape))).view(1, -1).size(1)
-
+      print("conv_size =", conv_size)
     self.lin1 = torch.nn.Linear(
       conv_size + vec_sp.shape[0] + sum(sp.shape[0] for sp in aux),
       hidden_units)
@@ -129,10 +129,10 @@ class ConvCritic(Module):
 
 
 class ConvModel(ActorModule):
-  def __init__(self, observation_space, action_space, num_critics: int = 2, hidden_units: int = 256):
+  def __init__(self, observation_space, action_space, num_critics: int = 2, hidden_units: int = 256, Conv: type = big_conv):
     super().__init__()
-    self.actor = ConvActor(observation_space, action_space, hidden_units)
-    self.critics = ModuleList(ConvCritic(observation_space, action_space, hidden_units) for _ in range(num_critics))
+    self.actor = ConvActor(observation_space, action_space, hidden_units, Conv)
+    self.critics = ModuleList(ConvCritic(observation_space, action_space, hidden_units, Conv) for _ in range(num_critics))
     self.critic_output_layers = sum((c.critic_output_layers for c in self.critics), ())
 
 
