@@ -139,7 +139,9 @@ def partial_from_args(func: Union[str, callable], kwargs: Dict[str, str]):
   keys = {k.split('.')[0] for k in kwargs}
   keywords = {}
   for key in keys:
-    param = inspect.signature(func).parameters[key]
+    params = inspect.signature(func).parameters
+    assert key in params, f"'{key}' is not a valid parameter of {func}. Valid parameters are {tuple(params.keys())}."
+    param = params[key]
     value = kwargs.get(key, param.default)
     if param.annotation is type:
       sub_keywords = {k.split('.', 1)[1]: v for k, v in kwargs.items() if k.startswith(key + '.')}
