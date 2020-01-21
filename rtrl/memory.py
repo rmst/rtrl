@@ -31,7 +31,7 @@ class Memory:
 
     # remove old entries if necessary (delete generously so we don't have to do it often)
     if len(self.memory) > self.capacity:
-      del self.memory[:self.capacity // 100]
+      del self.memory[:self.capacity // 100 + 1]
     return self
 
   def __len__(self):
