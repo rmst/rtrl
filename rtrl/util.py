@@ -36,11 +36,11 @@ def shallow_copy(obj: T) -> T:
 def collate(batch, device=None):
   elem = batch[0]
   if isinstance(elem, torch.Tensor):
-    # return torch.stack(batch, 0).to(device, non_blocking=non_blocking)
-    if elem.numel() < 20000:  # TODO: link to the relavant profiling that lead to this threshold
-      return torch.stack(batch).to(device)
-    else:
-      return torch.stack([b.contiguous().to(device) for b in batch], 0)
+    return torch.stack(batch).to(device)
+    # if elem.numel() < 20000:  # TODO: link to the relavant profiling that lead to this threshold
+    #   return torch.stack(batch).to(device)
+    # else:
+    #   return torch.stack([b.contiguous().to(device) for b in batch], 0)
   elif isinstance(elem, np.ndarray):
     return collate(tuple(torch.from_numpy(b) for b in batch), device)
   elif hasattr(elem, '__torch_tensor__'):
