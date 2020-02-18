@@ -46,15 +46,16 @@ Avenue [(Ibrahim et al., 2019)](https://github.com/elementaI/avenue) can be pip-
 ```bash
 pip install git+https://github.com/elementai/avenue.git
 ```
-<p align="center"><img src="/resources/avenue_collage.png" width=95% /></p>
+
+<p align="center"><img src="resources/rtrl-avenue-white.gif" width=95% /></p>
+
+<!-- <p align="center"><img src="/resources/avenue_collage.png" width=95% /></p> -->
 
 To train an RTAC agent to drive on a race track (left image) run
 ```bash
 python -m rtrl run rtrl:RtacAvenueTraining Env.id=RaceSolo-v0
 ```
 Note that this requires a lot of resources, especially memory (16GB+).
-
-<p align="center"><img src="resources/rtrl-avenue-white.gif" width=95% /></p>
 
 
 ### Storing Stats
