@@ -54,7 +54,7 @@ python -m rtrl run rtrl:RtacAvenueTraining Env.id=RaceSolo-v0
 ```
 Note that this requires a lot of resources, especially memory (16GB+).
 
-<p align="center"><img src="resources/rtrl-avenue-white.gif" width=95% /></p>
+<p align="center"><img src="resources/rtrl-avenue-white.gif" width=65% /></p>
 
 
 ### Storing Stats
