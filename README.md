@@ -47,11 +47,11 @@ Avenue [(Ibrahim et al., 2019)](https://github.com/elementaI/avenue) can be pip-
 pip install git+https://github.com/elementai/avenue.git
 ```
 
-<p align="center"><img src="resources/rtrl-avenue-white.gif" width=95% /></p>
+<p align="center"><img src="resources/rtrl-avenue-white.gif" width=100% /></p>
 
 <!-- <p align="center"><img src="/resources/avenue_collage.png" width=95% /></p> -->
 
-To train an RTAC agent to drive on a race track (left image) run
+To train an RTAC agent to drive on a race track (right video) run
 ```bash
 python -m rtrl run rtrl:RtacAvenueTraining Env.id=RaceSolo-v0
 ```
