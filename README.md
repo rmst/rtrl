@@ -54,6 +54,8 @@ python -m rtrl run rtrl:RtacAvenueTraining Env.id=RaceSolo-v0
 ```
 Note that this requires a lot of resources, especially memory (16GB+).
 
+![AvenueVideo](resources/rtrl-avenue-white.gif)
+
 
 ### Storing Stats
 `python -m rtrl run` just prints stats to stdout. To save stats use the following instead.
