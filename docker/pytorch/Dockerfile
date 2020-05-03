@@ -26,4 +26,4 @@ ENV PATH=/app/miniconda/bin:$PATH
 
 RUN pip install --no-cache-dir --upgrade pip
 
-RUN pip install --no-cache-dir torch==1.3.1
+RUN pip install --no-cache-dir torch==1.4.0 torchvision=0.5.0
